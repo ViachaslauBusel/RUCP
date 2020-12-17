@@ -1,4 +1,9 @@
-﻿using RUCP.Packets;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.Packets;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -36,7 +41,7 @@ namespace RUCP.BufferChannels
         {
             lock (sentPackages)
             {
-                packet.WriteNumber(numberSent);
+                packet.WriteNumber((ushort)numberSent);
                 int index = numberSent % sentPackages.Length;
                 //Если пакет в буффере еще не подтвержден и требует переотправки
                 if (sentPackages[index] != null) throw new BufferOverflowException("sent buffer overflow");

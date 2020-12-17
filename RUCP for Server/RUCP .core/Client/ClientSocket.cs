@@ -1,4 +1,9 @@
-﻿using RUCP.BufferChannels;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.BufferChannels;
 using RUCP.Debugger;
 using RUCP.Packets;
 using RUCP.Tools;
@@ -90,6 +95,10 @@ namespace RUCP.Client
 				profile.CloseConnection();
 
 				online = false;
+
+				bufferReliable.Dispose();
+				bufferQueue.Dispose();
+				bufferDiscard.Dispose();
 			}
 		}
 

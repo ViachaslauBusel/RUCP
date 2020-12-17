@@ -1,4 +1,9 @@
-﻿using System;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -9,7 +14,7 @@ namespace RUCP.Packets
 
         unsafe private void WriteValue(void* value, int len)
         {
-            fixed (byte* d = data)
+            fixed (byte* d = Data)
             { Buffer.MemoryCopy(value, d + index, len, len); }
             Length = index += len;
         }
@@ -21,7 +26,7 @@ namespace RUCP.Packets
         /// <returns></returns>
         public void WriteBytes(byte[] bytes)
         {
-            Array.Copy(bytes, 0, data, index, bytes.Length);
+            Array.Copy(bytes, 0, Data, index, bytes.Length);
             Length = index += bytes.Length;
         }
        unsafe public  void WriteFloat(float value)
@@ -46,13 +51,13 @@ namespace RUCP.Packets
 
         public  void WriteByte(byte value)
         {
-            data[index++] = value;
+            Data[index++] = value;
             Length = index;
         }
 
         public  void WriteBool(bool value)
         {
-            data[index++] = (byte)(value ? 1 : 0);
+            Data[index++] = (byte)(value ? 1 : 0);
             Length = index;
         }
 

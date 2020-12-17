@@ -1,15 +1,14 @@
-﻿using RUCP.Client;
-using RUCP.Packets;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RUCP.Handler
 {
-   public class HandlersStorage<T> where T : Delegate
+    public class HandlersStorage<T> where T : Delegate
     {
         private  T[] handlers;
 
@@ -19,7 +18,7 @@ namespace RUCP.Handler
             if (attribute) Initial();
         }
 
-       private void Initial()
+        private void Initial()
         {
             foreach (Type @class in Assembly.GetEntryAssembly().GetTypes())
             {
@@ -40,9 +39,23 @@ namespace RUCP.Handler
                 }
             }
         }
-        public T GetHandler(int number)
+        public void RegisterHandler(int type, T action)
         {
-            return handlers[number];
+            if (type < 0 || type >= handlers.Length) return;
+
+            handlers[type] = action;
+        }
+
+        public void UnregisterHandler(int type)
+        {
+            if (type < 0 || type >= handlers.Length) return;
+
+            handlers[type] = null;
+        }
+        public T GetHandler(int type)
+        {
+            if (type < 0 || type >= handlers.Length) return null;
+                return handlers[type];
         }
     }
 }

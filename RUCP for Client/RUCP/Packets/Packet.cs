@@ -1,4 +1,7 @@
-﻿
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
 
 using RUCP.Collections;
 using RUCP.Network;
@@ -58,24 +61,22 @@ namespace RUCP.Packets
 		 */
 		public int ReadChannel()
 		{
-			return (int)data[0];
+			return (int)Data[0];
 		}
 
 		public bool isChannel(int channel)
 		{
-			return data[0] == channel;
+			return Data[0] == channel;
 		}
 
 		/***
 			 * Задает порядковый номер отпровляемого пакета.
 			 *
 			 */
-		internal void WriteNumber(int number)
+		unsafe internal void WriteNumber(ushort number)
 		{
-
-			byte[] number_b = BitConverter.GetBytes((ushort)number);
-			data[3] = number_b[0];
-			data[4] = number_b[1];
+			fixed (byte* d = Data)
+			{ Buffer.MemoryCopy(&number, d + 3, 2, 2); }
 		}
 
 		/// <summary>
@@ -83,7 +84,7 @@ namespace RUCP.Packets
 		/// </summary>
 		internal int ReadNumber()
 		{
-			return BitConverter.ToUInt16(data, 3);
+			return BitConverter.ToUInt16(Data, 3);
 		}
 
 
@@ -91,16 +92,14 @@ namespace RUCP.Packets
 		/// <summary>
 		/// Записывает тип пакета в заголовок
 		/// </summary>
-		public void WriteType(int typ)
+		unsafe public void WriteType(short type)
 		{
-			byte[] type_b = BitConverter.GetBytes((short)typ);
-
-			data[1] = type_b[0];
-			data[2] = type_b[1];
+			fixed (byte* d = Data)
+			{ Buffer.MemoryCopy(&type, d + 1, 2, 2); }
 		}
 		public int ReadType()
 		{
-			return BitConverter.ToInt16(data, 1);
+			return BitConverter.ToInt16(Data, 1);
 		}
 
 		public long GetDelay()

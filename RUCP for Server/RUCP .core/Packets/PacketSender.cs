@@ -1,4 +1,9 @@
-﻿using RUCP.Debugger;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.Debugger;
 using RUCP.Tools;
 using RUCP.Transmitter;
 using System;
@@ -23,11 +28,15 @@ namespace RUCP.Packets
                     return;
                 }
 
-                UdpSocket.SendTo(Data, Length, Client.Address);
+
+                bool dispose = false;
 
                 if (Client.InsertBuffer(this))
                     Resender.Add(this); //Запись на переотправку
-                else Dispose();
+                else dispose = true;
+
+                UdpSocket.SendTo(Data, Length, Client.Address);
+                if (dispose) Dispose();
             }
             catch (BufferOverflowException e)
             {

@@ -1,4 +1,9 @@
-﻿using RUCP.BufferChannels;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.BufferChannels;
 using RUCP.Handler;
 using RUCP.Network;
 using RUCP.Packets;
@@ -105,7 +110,7 @@ namespace RUCP
         public void Close()
         {
             Debug.Log("Закрытие соединение");
-            Packet packet = new Packet(Channel.Disconnect);
+            Packet packet =  Packet.Create(Channel.Disconnect);
             SocketSender?.Send(packet);
 
 

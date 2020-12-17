@@ -1,4 +1,9 @@
-﻿using RUCP.Packets;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.Packets;
 using RUCP.Tools;
 using System;
 using System.Collections.Generic;
@@ -64,6 +69,12 @@ namespace RUCP.BufferChannels
 
 				numberSent = (numberSent + 1) % numberingWindowSize;
 			}
+		}
+
+		internal void Dispose()
+		{
+			for (int i = 0; i < receivedPackages.Length; i++)
+				 receivedPackages[i]?.Dispose();
 		}
 	}
 }

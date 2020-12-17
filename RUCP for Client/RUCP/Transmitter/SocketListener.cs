@@ -1,4 +1,9 @@
-﻿using RUCP.BufferChannels;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.BufferChannels;
 using RUCP.Network;
 using RUCP.Packets;
 using RUCP.Transmitter;
@@ -39,7 +44,7 @@ namespace RUCP.Transmitter
                 try
                 {
                     int receiveBytes = serverSocket.Socket.ReceiveFrom(out byte[] data);
-                    Packet packet = new Packet(data, receiveBytes);
+                    Packet packet = Packet.Create(data, receiveBytes);
              //       Debug.Log("пакет принят по каналу: " + packet.ReadChannel() + " number: "+packet.ReadNumber());
                     switch (packet.ReadChannel())
                     {
@@ -113,8 +118,8 @@ namespace RUCP.Transmitter
         /// </summary>
         private void SendConfirmACK(int number, int channel)
         {
-            Packet packet = new Packet(channel);
-            packet.WriteNumber(number);
+            Packet packet =  Packet.Create(channel);
+            packet.WriteNumber((ushort)number);
             serverSocket.Socket.Send(packet);
         }
     }

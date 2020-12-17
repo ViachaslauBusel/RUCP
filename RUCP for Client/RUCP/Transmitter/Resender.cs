@@ -1,4 +1,9 @@
-﻿using RUCP.Collections;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.Collections;
 using RUCP.Network;
 using RUCP.Packets;
 using System;

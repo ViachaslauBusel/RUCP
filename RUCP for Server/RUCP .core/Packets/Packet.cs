@@ -1,4 +1,8 @@
-﻿
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
 using RUCP.Client;
 using RUCP.Collections;
 using RUCP.Tools;
@@ -12,7 +16,7 @@ namespace RUCP.Packets
 		/// <summary>
 		/// Длина заголовка пакета
 		/// </summary>
-		private static readonly int headerLength = 5;
+		private const int headerLength = 5;
 		public long sendTime { get; private set; } = 0;//Время отправки
 		public long ResendTime { get; private set; } = 0;//Время повторной отправки пакета при неудачной попытке доставки
 		internal int sendCicle = 0;//При отправке или получении пакета, пакет блокируется для невозможности повторной отправки

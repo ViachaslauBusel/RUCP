@@ -1,4 +1,9 @@
-﻿using RUCP.Collections;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.Collections;
 using RUCP.Debugger;
 using RUCP.Packets;
 using System;
@@ -53,9 +58,10 @@ namespace RUCP.Transmitter
                             +" timeOut: "+packet.Client.GetTimeout() 
                             + " ping: "+packet.Client.Ping);
                         packet.Client.CloseConnection();
+                        packet.Dispose();
                         continue;
                     }
-                    // Console.WriteLine("resend ping: " + packet.getClient().Ping);
+
                     UdpSocket.Send(packet);
                     Resender.Add(packet); //Запись на переотправку
 

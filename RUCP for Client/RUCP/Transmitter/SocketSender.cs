@@ -1,4 +1,9 @@
-﻿using RUCP.Network;
+﻿/* BSD 3-Clause License
+ *
+ * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
+ * All rights reserved. */
+
+using RUCP.Network;
 using RUCP.Packets;
 using RUCP.Transmitter;
 using System;
@@ -35,7 +40,7 @@ namespace RUCP.Transmitter
         {
             if (open_packet == null)
             {
-                open_packet = new Packet(Channel.Connection); //Пакет с первым байтом индификатором подключения 
+                open_packet =  Packet.Create(Channel.Connection); //Пакет с первым байтом индификатором подключения 
             }
             else if (!open_packet.isChannel(Channel.Connection)) throw new SocketException();
 
