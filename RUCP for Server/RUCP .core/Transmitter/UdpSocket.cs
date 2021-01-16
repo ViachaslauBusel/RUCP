@@ -19,6 +19,7 @@ namespace RUCP.Transmitter
 
         internal static void CreateSocket(int localPort)
         {
+            if (socket != null) throw new Exception("The server is already running");
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint localIP = new IPEndPoint(IPAddress.Parse("127.0.0.1"), localPort);
             socket.Bind(localIP);
@@ -45,7 +46,8 @@ namespace RUCP.Transmitter
         internal static void Close()
         {
          //   udpClient.Close();
-            socket.Close();
+            socket?.Close();
+            socket = null;
         }
 
         

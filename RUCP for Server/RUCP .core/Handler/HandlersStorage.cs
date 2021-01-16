@@ -26,15 +26,15 @@ namespace RUCP.Handler
                 {
                     foreach (Attribute attribute in method.GetCustomAttributes(typeof(HandlerAttribute), true))
                     {
-                        if (!method.IsStatic) { Console.Error.WriteLine($"The '{method.Name}' method for handling messages must be static"); continue; }
+                        if (!method.IsStatic) { System.Console.Error.WriteLine($"The '{method.Name}' method for handling messages must be static"); continue; }
 
                         HandlerAttribute handlerAttribute = attribute as HandlerAttribute;
 
                         if(handlerAttribute.Number < 0 || handlerAttribute.Number >= handlers.Length)
-                        { Console.Error.WriteLine($"The '{method.Name}' method is assigned a type that is outside the Handlers Storage"); continue; }
+                        { System.Console.Error.WriteLine($"The '{method.Name}' method is assigned a type that is outside the Handlers Storage"); continue; }
 
                         try { handlers[handlerAttribute.Number] = method.CreateDelegate<T>(); }
-                        catch (ArgumentException) { Console.Error.WriteLine($"The method '{method.Name}' has invalid parameters"); }
+                        catch (ArgumentException) { System.Console.Error.WriteLine($"The method '{method.Name}' has invalid parameters"); }
                     }
                 }
             }

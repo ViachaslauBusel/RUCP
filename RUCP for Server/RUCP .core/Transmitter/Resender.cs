@@ -52,9 +52,9 @@ namespace RUCP.Transmitter
                     //Если количество попыток переотправки пакета превышает 20, отключаем клиента
                     if (packet.sendCicle > 20)
                     {
-                        Console.WriteLine(packet.Client.ID + ": Client Close Connection: " + packet.Client.Address + " time: " + DateTimeOffset.UtcNow);
-                        Console.WriteLine("Packet is closed, type: " + packet.ReadType() + " channel: "+ packet.ReadChannel() +" number: " + packet.ReadNumber());
-                        Console.WriteLine("Время прошедшее с момента первой отправки пакета: " + (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.sendTime) 
+                        System.Console.WriteLine(packet.Client.ID + ": Client Close Connection: " + packet.Client.Address + " time: " + DateTimeOffset.UtcNow);
+                        System.Console.WriteLine("Packet is closed, type: " + packet.ReadType() + " channel: "+ packet.ReadChannel() +" number: " + packet.ReadNumber());
+                        System.Console.WriteLine("Время прошедшее с момента первой отправки пакета: " + (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.sendTime) 
                             +" timeOut: "+packet.Client.GetTimeout() 
                             + " ping: "+packet.Client.Ping);
                         packet.Client.CloseConnection();
@@ -68,7 +68,7 @@ namespace RUCP.Transmitter
                 }
                 catch (Exception e)
                 {
-                    Debug.logError(GetType().Name, e.Message, e.StackTrace);
+                    Debug.LogError(e);
                 }
 
             }

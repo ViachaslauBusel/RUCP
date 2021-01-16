@@ -19,12 +19,12 @@ namespace RUCP.Packets
 
                 if (Client == null)
                 {
-                    Console.Error.WriteLine("Error in Sender: client == null");
+                    System.Console.Error.WriteLine("Error in Sender: client == null");
                     return;
                 }
                 if (sendCicle != 0)
                 {
-                    Console.WriteLine("Пакет заблокирован, отправка невозможна");
+                    System.Console.WriteLine("Пакет заблокирован, отправка невозможна");
                     return;
                 }
 
@@ -40,13 +40,13 @@ namespace RUCP.Packets
             }
             catch (BufferOverflowException e)
             {
-                Console.WriteLine("Переполнения буффера");
-                Debug.logError(GetType().Name, e.Message, e.StackTrace);
+                System.Console.WriteLine("Переполнения буффера");
+                Debug.LogError(e);
                 Client.CloseConnection();
             }
             catch (Exception e)
             {
-                Debug.logError(GetType().Name, e.Message, e.StackTrace);
+                Debug.LogError(e);
             }
         }
 

@@ -7,11 +7,9 @@ using System;
 
 namespace RUCP.Debugger
 {
-    public class DebugObject
+    internal interface DebugObject
     {
-        internal void logError(string className, string error, string trace)
-        {
-          
-        }
+        public void LogError(Exception exception);
+        public void Log(string className, string message);
     }
 }

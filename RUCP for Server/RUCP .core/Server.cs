@@ -27,7 +27,6 @@ namespace RUCP
 		private static Func<IProfile> createProfile;
 		
 		private int port;
-		private bool work = true;
 		private volatile int processPackets = 0;
 		private volatile int completedPackets = 0;
 		//	private HandlerThread[] pool_handler;
@@ -53,28 +52,28 @@ namespace RUCP
 		{
 			try
 			{
-			//	buffer = new BlockingCollection<Packet>(new ConcurrentQueue<Packet>());
+				System.Console.WriteLine("RUCP ver " + "0.002a");
+				//	buffer = new BlockingCollection<Packet>(new ConcurrentQueue<Packet>());
 				//Создание сокета по порту для считывание данных
 				UdpSocket.CreateSocket(port);
-			//	socket = new UdpClient(0);
 
+				//Запуск потока проверки соединений
+				CheckingConnections.Start();
 
-
-				Console.WriteLine("RUCP ver " + "0.001a");
-
-
-				
+				//Запуск потока переотправки потеряных пакетов
+				Resender.Start();
 
 				//Запуск потока считывание датаграмм
 				Thread server_th = new Thread(() => Run());
 				server_th.IsBackground = false;
 				server_th.Start();
 
-
+				System.Console.WriteLine("The server was started successfully");
 			}
-			catch (SocketException e)
+			catch (Exception e)
 			{
-				Debug.logError(GetType().Name, e.Message, e.StackTrace);
+				System.Console.WriteLine("Failed to start server");
+				Debug.LogError(e);
 			}
 		}
 
@@ -87,29 +86,21 @@ namespace RUCP
 		internal void Run()
 		{
 
-			//Запуск потока проверки соединений
-			CheckingConnections.Start();
-
-			//Запуск потока переотправки потеряных пакетов
-			Resender.Start();
-
-
-
 			//Создание потоков оброботчиков(количество ядер х2)
 			//	ThreadPool.SetMaxThreads(Environment.ProcessorCount * 3, Environment.ProcessorCount * 3);
-		//	ThreadPool.GetMaxThreads(out int worker, out int port);
-		//	Console.WriteLine($"worker: {worker} port: {port}");
-		//	pool_handler = new HandlerThread[Environment.ProcessorCount * 2];
+			//	ThreadPool.GetMaxThreads(out int worker, out int port);
+			//	Console.WriteLine($"worker: {worker} port: {port}");
+			//	pool_handler = new HandlerThread[Environment.ProcessorCount * 2];
 			//Запускаем потоки
-		/*	for (int i = 0; i < pool_handler.Length; i++)
-			{
-				pool_handler[i] = new HandlerThread();
-				pool_handler[i].Start();
-			}*/
+			/*	for (int i = 0; i < pool_handler.Length; i++)
+				{
+					pool_handler[i] = new HandlerThread();
+					pool_handler[i].Start();
+				}*/
 
 
 
-			while (work)
+			while (true)
 			{
 				try
 				{
@@ -117,12 +108,7 @@ namespace RUCP
 					Packet packet = Packet.Create();
 					//Считывание датаграм
 				    UdpSocket.ReceiveFrom(ref packet);
-			
-	
-					//long startTime = System.nanoTime();
 
-				
-					//Packet packet = new Packet(data, bytesReceived, remoteAddress);
 
 					processPackets++;
 					Task.Run(() => {
@@ -131,39 +117,25 @@ namespace RUCP
 						});
 
 				}
+                catch (SocketException e)
+                {
+					if(e.ErrorCode == 10004)
+					break;
+					Debug.LogError(e);
+				}
 				catch (Exception e)
 				{
-					Debug.logError(GetType().Name, e.Message, e.StackTrace);
+					Debug.LogError(e);
 				}
-
-
 			}
 
 		}
 
 		public void Stop()
 		{
-			work = false;
 			UdpSocket.Close();
 
 
-
-			//Выключение потоков обработчиков
-			/*	for (int i = 0; i < pool_handler.Length; i++)
-				{ pool_handler[i].Stop(); }
-
-				//Ожидание завершение потоков обработчикав
-				for (int i = 0; i < pool_handler.Length; i++)
-				{
-					try
-					{
-						pool_handler[i].Join();
-					}
-					catch (Exception e)
-					{
-						Debug.logError(GetType().Name, e.Message, e.StackTrace);
-					}
-				}*/
 
 			while(processPackets != completedPackets) { Thread.Sleep(1); }
 			//Console.WriteLine($"process: {processPackets} completed: {completedPackets}");
@@ -174,7 +146,7 @@ namespace RUCP
 				client.CloseConnection();
 			}
 
-			Console.WriteLine("RUCP shutdown");
+			System.Console.WriteLine("RUCP shutdown");
 		}
 	}
 }

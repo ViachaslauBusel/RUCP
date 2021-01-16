@@ -48,17 +48,17 @@ namespace RUCP
 				{
 					if (packet.isChannel(Channel.Connection) && ClientList.AddClient(client.ID, client))
 					{
-						Console.WriteLine("Клиент добавлен");
+						System.Console.WriteLine("Клиент добавлен");
 						if (client.openConnection(packet))//Если установка соеденения прошла успешна
 						{
 							CheckingConnections.InsertClient(client);//Вставка клиента в очередь проверки соеденение
 																	 //отпровляем подтверждение клиенту
 							Packet.Create(client, Channel.Connection).Send();
-							Console.WriteLine("online: " + ClientList.online());
+							System.Console.WriteLine("online: " + ClientList.online());
 						}
 						else
 						{
-							Console.WriteLine("Неудачная попытка соеденениея");
+							System.Console.WriteLine("Неудачная попытка соеденениея");
 							client.CloseConnection();
 						}
 
@@ -91,7 +91,7 @@ namespace RUCP
 						break;
 
 					case Channel.Disconnect:
-						Console.WriteLine("client Disconnect");
+						System.Console.WriteLine("client Disconnect");
 						client.CloseConnection();
 						break;
 
@@ -116,9 +116,7 @@ namespace RUCP
 			}
 			catch (Exception e)
 			{
-
-					Debug.logError("HandlerThread", e.Message, e.StackTrace);
-
+					Debug.LogError(e);
 			}
 		//	}
 

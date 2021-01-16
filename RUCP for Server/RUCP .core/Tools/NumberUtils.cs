@@ -14,7 +14,7 @@ namespace RUCP.Tools
         /// <summary>
         /// Возвращает -1 если X < Y, 0 если X == Y, если X > Y возвращает 1
         /// </summary>
-        public static int ShortCompare(int x, int y)
+        public static int UshortCompare(int x, int y)
         {
             if (x > y)
             {

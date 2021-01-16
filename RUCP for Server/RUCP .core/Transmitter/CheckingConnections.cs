@@ -49,7 +49,7 @@ namespace RUCP.Transmitter
                 {
                     if (client != null && client.isConnected())
                     {
-                       Console.WriteLine("Checking Connection: " + client.Address.ToString() + " time: " + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                        System.Console.WriteLine("Checking Connection: " + client.Address.ToString() + " time: " + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                         client.checkingConnection();//Можно использвать для сохранение прогресса в БД
                         CheckingConnection(client);//Отправка пакета для проверки соеденения
                         client.CheckingTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();//Время последней проверки
@@ -76,7 +76,7 @@ namespace RUCP.Transmitter
                 }
                 catch (Exception e)
                 {
-                    Debug.logError(GetType().Name, e.Message, e.StackTrace);
+                    Debug.LogError(e);
                 }
             }
         }

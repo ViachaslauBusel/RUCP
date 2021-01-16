@@ -88,7 +88,7 @@ namespace RUCP.Client
 		/// </summary>
 		public void CloseConnection()
 		{
-			Console.WriteLine("Закрытие соединение");
+			System.Console.WriteLine("Закрытие соединение");
 			Disconnect();
 			if (ClientList.RemoveClient(ID))
 			{

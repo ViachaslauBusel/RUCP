@@ -11,7 +11,7 @@ using System.Text;
 
 namespace RUCP.BufferChannels
 {
-     internal class Buffer
+     public class Buffer
     {
 		/// <summary>
 		/// размер окна нумерации пакетов
@@ -40,7 +40,7 @@ namespace RUCP.BufferChannels
 		/// Подтверждение о принятии пакета клиентом
 		/// </summary>
 		/// <param name="number"></param>
-		internal void ConfirmAsk(int number)
+		public void ConfirmAsk(int number)
 		{
 			lock (sentPackages)
 			{

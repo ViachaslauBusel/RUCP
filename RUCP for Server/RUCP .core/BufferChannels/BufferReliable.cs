@@ -35,7 +35,7 @@ namespace RUCP.BufferChannels
 					//Если пакет еще не был принят
 					if (receivedPackages[index] == null
 							// Если принятый пакет был отправлен после чем пакет записанный в буффер
-							|| NumberUtils.ShortCompare(numberPacket, receivedPackages[index].ReadNumber()) > 0)
+							|| NumberUtils.UshortCompare(numberPacket, receivedPackages[index].ReadNumber()) > 0)
 					{
 				     	receivedPackages[index]?.Dispose();
 						receivedPackages[index] = pack;
