@@ -4,6 +4,7 @@
  * All rights reserved. */
 
 using RUCP.BufferChannels;
+using RUCP.Cryptography;
 using RUCP.Debugger;
 using RUCP.Packets;
 using RUCP.Tools;
@@ -32,9 +33,12 @@ namespace RUCP.Client
 
 		public long CheckingTime = 0;//Время последней проверки соеденение
 
-		
+		internal RSA CryptographerRSA { get; set; } = new RSA();
+		internal AES CryptographerAES { get; set; } = new AES();
 
-		internal ClientSocket(IPEndPoint address, IProfile profile)
+
+
+	internal ClientSocket(IPEndPoint address, IProfile profile)
 		{
 			bufferReliable = new BufferReliable(500);
 			bufferQueue = new BufferQueue(this, 500);
@@ -65,6 +69,7 @@ namespace RUCP.Client
 		/// </summary>
 		internal void HandlerPack(Packet packet)
 		{
+			if (packet.Encrypt) CryptographerAES.Decrypt(packet);
 			if (online) profile.ChannelRead(packet);
 		}
 
@@ -74,9 +79,10 @@ namespace RUCP.Client
 			return online;
 		}
 
-		internal bool openConnection(Packet pack)
+		internal void OpenConnection()
 		{
-			return online = profile.OpenConnection(pack);
+			online = true;
+			profile.OpenConnection();
 		}
 
 		internal void checkingConnection()
@@ -88,7 +94,7 @@ namespace RUCP.Client
 		/// </summary>
 		public void CloseConnection()
 		{
-			System.Console.WriteLine("Закрытие соединение");
+		//	System.Console.WriteLine("Закрытие соединение");
 			Disconnect();
 			if (ClientList.RemoveClient(ID))
 			{
@@ -99,6 +105,9 @@ namespace RUCP.Client
 				bufferReliable.Dispose();
 				bufferQueue.Dispose();
 				bufferDiscard.Dispose();
+
+				CryptographerAES.Dispose();
+				CryptographerRSA.Dispose();
 			}
 		}
 
@@ -126,7 +135,7 @@ namespace RUCP.Client
 		/// </summary>
 		internal bool InsertBuffer(Packet packet)
 		{
-            switch (packet.ReadChannel())
+            switch (packet.Channel)
             {
 				case Channel.Reliable:
 					bufferReliable.Insert(packet);

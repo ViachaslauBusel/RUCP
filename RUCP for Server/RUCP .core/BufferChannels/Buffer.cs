@@ -47,7 +47,7 @@ namespace RUCP.BufferChannels
 				int index = number % sentPackages.Length;
 				if (sentPackages[index] != null && sentPackages[index].ReadNumber() == number)
 				{
-					sentPackages[index].setAck(true);
+					sentPackages[index].ACK = true;
 					sentPackages[index].CalculatePing();
 					sentPackages[index] = null;
 				}
@@ -63,7 +63,7 @@ namespace RUCP.BufferChannels
 				packet.WriteNumber((ushort)numberSent);
 				int index = numberSent % sentPackages.Length;
 				//Если пакет в буффере еще не подтвержден и требует переотправки
-				if (sentPackages[index] != null) throw new BufferOverflowException("sent buffer overflow");
+				if (sentPackages[index] != null) throw new BufferOverflowException("send buffer overflow");
 
 				sentPackages[index] = packet;
 

@@ -35,7 +35,7 @@ namespace RUCP.Packets
 			{
 				packet.Reset();
 				packet.Client = client;
-				packet.Data[0] = (byte)channel;
+				packet.Channel = channel;
 				return packet;
 			}
 			return new Packet(client, channel);
@@ -44,7 +44,7 @@ namespace RUCP.Packets
 		{
 			Reset();
 			this.Client = client;
-			Data[0] = (byte)channel;
+			this.Channel = channel;
 		}
 
 

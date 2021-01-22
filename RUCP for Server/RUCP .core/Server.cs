@@ -4,6 +4,7 @@
  * All rights reserved. */
 
 using RUCP.Client;
+using RUCP.Cryptography;
 using RUCP.Debugger;
 using RUCP.Handler;
 using RUCP.Packets;
@@ -19,11 +20,13 @@ namespace RUCP
 {
     public class Server
     {
-
+		public static string Version => $"ver. {version.ToString("0.###")}a";
+		internal const float version = 0.003f;
+		internal const float minSupportedVersion = 0.003f;
 		/***
 		 * Буфер для хранение пакетов в очереди
 		 */
-	//	private static BlockingCollection<Packet> buffer;
+		//	private static BlockingCollection<Packet> buffer;
 		private static Func<IProfile> createProfile;
 		
 		private int port;
@@ -52,10 +55,12 @@ namespace RUCP
 		{
 			try
 			{
-				System.Console.WriteLine("RUCP ver " + "0.002a");
+				System.Console.WriteLine("RUCP " + Version);
 				//	buffer = new BlockingCollection<Packet>(new ConcurrentQueue<Packet>());
 				//Создание сокета по порту для считывание данных
 				UdpSocket.CreateSocket(port);
+
+				RSA.SetPrivateKey(ContainerRSAKey.LoadPrivateKey());
 
 				//Запуск потока проверки соединений
 				CheckingConnections.Start();
@@ -109,7 +114,6 @@ namespace RUCP
 					//Считывание датаграм
 				    UdpSocket.ReceiveFrom(ref packet);
 
-
 					processPackets++;
 					Task.Run(() => {
 						HandlerThread.Process(packet);
@@ -121,6 +125,8 @@ namespace RUCP
                 {
 					if(e.ErrorCode == 10004)
 					break;
+					if (e.ErrorCode == 10054)
+						continue;
 					Debug.LogError(e);
 				}
 				catch (Exception e)

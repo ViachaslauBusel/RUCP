@@ -33,7 +33,7 @@ namespace RUCP
             Object = null;
         }
 
-        internal static void logError(string name, string v, string stackTrace)
+        internal static void LogError(string name, string v, string stackTrace)
         {
             Object?.LogError(name, v, stackTrace);
         }

@@ -15,7 +15,7 @@ namespace RUCP.Packets
      //   protected byte[] Data = new byte[1500]; //Буфер
 
         internal byte[] Data { get; } = new byte[1500]; //Буфер
-        public int Length { get; internal set; }
+        internal int Length { get; set; }
         //  public int length;//Размер данных
         public int AvailableBytes => Length - index;
 

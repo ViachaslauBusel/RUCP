@@ -23,6 +23,7 @@ namespace RUCP.Packets
         /// </summary>
         public void WriteBytes(byte[] bytes)
         {
+            WriteShort((short)bytes.Length);
             Array.Copy(bytes, 0, Data, index, bytes.Length);
             Length = index += bytes.Length;
         }
@@ -60,7 +61,6 @@ namespace RUCP.Packets
         public void WriteString(string value)
         {
             byte[] bytes = Encoding.UTF8.GetBytes(value);
-            WriteShort((short)bytes.Length);
             WriteBytes(bytes);
         }
     }

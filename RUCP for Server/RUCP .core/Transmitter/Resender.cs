@@ -22,7 +22,6 @@ namespace RUCP.Transmitter
 
         internal static void Add(Packet packet)
         {
-            packet.sendCicle++;
             packet.WriteSendTime(); //Время следующей переотправки пакета
             elements.Add(packet);
         }
@@ -47,16 +46,14 @@ namespace RUCP.Transmitter
                     Packet packet = elements.Take();
 
                     //Если первый пакеет в очереди подтвержден удаляем его из очереди и переходим к следуюещему
-                    if (packet.isAck() || !packet.Client.isConnected()) { packet.Dispose(); continue; }//Или клиент отключен
+                    if (packet.ACK || !packet.Client.isConnected()) { packet.Dispose(); continue; }//Или клиент отключен
 
                     //Если количество попыток переотправки пакета превышает 20, отключаем клиента
-                    if (packet.sendCicle > 20)
+                    if (packet.SendCicle > 20)
                     {
-                        System.Console.WriteLine(packet.Client.ID + ": Client Close Connection: " + packet.Client.Address + " time: " + DateTimeOffset.UtcNow);
-                        System.Console.WriteLine("Packet is closed, type: " + packet.ReadType() + " channel: "+ packet.ReadChannel() +" number: " + packet.ReadNumber());
-                        System.Console.WriteLine("Время прошедшее с момента первой отправки пакета: " + (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.sendTime) 
-                            +" timeOut: "+packet.Client.GetTimeout() 
-                            + " ping: "+packet.Client.Ping);
+                        Debug.Log("Resender", packet.Client.ID + ": Client Close Connection: " + packet.Client.Address + " time: " + DateTimeOffset.UtcNow);
+                        Debug.Log("Resender", "Packet is closed, type: " + packet.ReadType() + " channel: "+ packet.Channel + " number: " + packet.ReadNumber());
+                        
                         packet.Client.CloseConnection();
                         packet.Dispose();
                         continue;

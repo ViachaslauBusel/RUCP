@@ -8,6 +8,7 @@ using RUCP.Collections;
 using RUCP.Tools;
 using System;
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace RUCP.Packets
 {
@@ -16,11 +17,17 @@ namespace RUCP.Packets
 		/// <summary>
 		/// Длина заголовка пакета
 		/// </summary>
-		private const int headerLength = 5;
-		public long sendTime { get; private set; } = 0;//Время отправки
+		internal const int headerLength = 6;	
+		
+		private long sendTime = 0;//Время отправки
 		public long ResendTime { get; private set; } = 0;//Время повторной отправки пакета при неудачной попытке доставки
-		internal int sendCicle = 0;//При отправке или получении пакета, пакет блокируется для невозможности повторной отправки
-		private bool ack = false;
+
+		private volatile int sendCicle = 0;
+		internal int SendCicle => sendCicle;//При отправке или получении пакета, пакет блокируется для невозможности повторной отправки
+		public bool isBlock => SendCicle != 0;
+
+		private volatile bool ack = false;
+		internal bool ACK { get => ack; set { ack = value; } }
 
 		public ClientSocket Client { get; private set; }
 		internal IPEndPoint address;
@@ -33,26 +40,13 @@ namespace RUCP.Packets
 		{
 			if (sendCicle == 1) sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.GetTimeout() * sendCicle;
+			sendCicle++;
 		}
 		internal void CalculatePing()
 		{
-			Client.Ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sendTime);
+		 	Client.Ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sendTime);
 		}
 
-		public bool isAck()
-		{
-			return ack;
-		}
-
-		/***
-		 * Задает метку доставки пакета.
-		 * Задается автоматически при получении пакета от клиента с подтверждением доставки
-		 * @param ack
-		 */
-		internal void setAck(bool ack)
-		{
-			this.ack = ack;
-		}
 
 		internal ClientSocket BindClient()
 		{
@@ -60,19 +54,25 @@ namespace RUCP.Packets
 			Client = ClientList.GetClient(SocketInformer.GetID(address)) ?? new ClientSocket(address, Server.ProfileCreate());
 			return Client;
 		}
-
+		public bool Encrypt
+		{
+			get => (Data[0] & 0b1000_0000) == 0b1000_0000;
+			set { Data[0] |= 0b1000_0000; }
+		}
 		/***
 		 * Возврощает канал по которому будет\был передан пакет
 		 * @return
 		 */
-		public int ReadChannel()
+		public int Channel
 		{
-			return Data[0];
+			get => Data[0] & 0b0111_1111;
+            private set { Data[0] = (byte)value; }
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool isChannel(int channel)
 		{
-			return Data[0] == channel;
+			return Channel == channel;
 		}
 
 		/***

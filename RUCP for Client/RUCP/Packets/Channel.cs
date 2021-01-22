@@ -6,7 +6,7 @@
 using System;
 using System.Collections;
 
-namespace RUCP.Network
+namespace RUCP.Packets
 {
     public static class Channel 
     {
@@ -18,7 +18,7 @@ namespace RUCP.Network
         internal const int QueueACK = 5;
         internal const int DiscardACK = 6;
 
-        public const int Connection = 7;
+        internal const int Connection = 7;
         internal const int Disconnect = 8;
     }
 }

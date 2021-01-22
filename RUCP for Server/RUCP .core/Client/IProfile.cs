@@ -15,7 +15,7 @@ namespace RUCP.Client
         /// <summary>
         /// Открытие соединения
         /// </summary>
-        bool OpenConnection(Packet pack);
+        void OpenConnection();
         void ChannelRead(Packet pack);
         void CloseConnection();
         void CheckingConnection();

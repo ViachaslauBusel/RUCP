@@ -27,7 +27,6 @@ namespace RUCP.Transmitter
 
         internal void Add(Packet packet)
         {
-            packet.sendCicle++;
             packet.WriteSendTime(serverSocket.NetworkInfo.GetTimeout());
             elements.Add(packet);
         }
@@ -37,7 +36,7 @@ namespace RUCP.Transmitter
             thread = new Thread(new ThreadStart(Run));
             thread.Start();
         }
-        internal void Run()
+        private void Run()
         {
             Packet packet = null;
             while (true)
@@ -47,17 +46,17 @@ namespace RUCP.Transmitter
                     packet = elements.Take();
 
                     //Если первый пакеет в очереди подтвержден удаляем его из очереди и переходим к следуюещему
-                    if (packet.isAck()) continue;
+                    if (packet.ACK) continue;
                    
                     //Если количество попыток переотправки пакета превышает 16, отключаем клиента
-                    if (packet.sendCicle > 40)
+                    if (packet.SendCicle > 40)
                     {
                         Debug.Log("Close Connection time: " + DateTimeOffset.UtcNow);
-                        Debug.Log("Время прошедшее с момента первой отправки пакета: " + (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.sendTime));
+                        Debug.Log("Время прошедшее с момента первой отправки пакета: " +packet.CalculatePing());
                         serverSocket.Close();
                         continue;
                     }
-                   // Debug.Log($"переотправка через: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.sendTime}");
+
                     serverSocket.NetworkInfo.Resend++;
                //     Debug.Log("Переотправка пакета");
                     serverSocket.Socket.Send(packet);
@@ -70,8 +69,8 @@ namespace RUCP.Transmitter
                 }
                 catch (Exception e)
                 {
-                    Debug.Log($"sendCicle: {packet.sendCicle} timeOut: {serverSocket.NetworkInfo.GetTimeout()} delay:{packet.GetDelay()}");
-                 Debug.logError(GetType().Name, e.Message, e.StackTrace);
+                    Debug.Log($"sendCicle: {packet.SendCicle} timeOut: {serverSocket.NetworkInfo.GetTimeout()} delay:{packet.GetDelay()}");
+                 Debug.LogError(GetType().Name, e.Message, e.StackTrace);
                 }
 
             }

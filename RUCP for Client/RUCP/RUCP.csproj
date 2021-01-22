@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>RUCP</RootNamespace>
-    <AssemblyName>RUCP</AssemblyName>
+    <AssemblyName>RUCPclient</AssemblyName>
     <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile>
@@ -54,10 +54,13 @@
     <Compile Include="BufferChannels\BufferQueue.cs" />
     <Compile Include="BufferChannels\BufferReliable.cs" />
     <Compile Include="BufferChannels\BufferOverflowException.cs" />
+    <Compile Include="Cryptography\AES.cs" />
+    <Compile Include="Cryptography\RSA.cs" />
+    <Compile Include="Cryptography\RSAKey.cs" />
     <Compile Include="Debugger\DebugBuffer.cs" />
     <Compile Include="Debugger\DebugFile.cs" />
     <Compile Include="Debugger\DebugObject.cs" />
-    <Compile Include="Network\Channel.cs" />
+    <Compile Include="Packets\Channel.cs" />
     <Compile Include="Collections\DelayQueue.cs" />
     <Compile Include="Collections\IDelayed.cs" />
     <Compile Include="Collections\PriorityQueue.cs" />
@@ -65,6 +68,7 @@
     <Compile Include="ServerSocket.cs" />
     <Compile Include="Debugger\Debug.cs" />
     <Compile Include="Handler\HandlersStorage.cs" />
+    <Compile Include="Transmitter\SocketConnector.cs" />
     <Compile Include="Transmitter\SocketListener.cs" />
     <Compile Include="Network\NetworkInfo.cs" />
     <Compile Include="Network\NetworkStatus.cs" />
@@ -80,6 +84,7 @@
     <Compile Include="Transmitter\Resender.cs" />
     <Compile Include="Transmitter\UdpSocket.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

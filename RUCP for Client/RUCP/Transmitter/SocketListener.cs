@@ -4,6 +4,7 @@
  * All rights reserved. */
 
 using RUCP.BufferChannels;
+using RUCP.Cryptography;
 using RUCP.Network;
 using RUCP.Packets;
 using RUCP.Transmitter;
@@ -17,22 +18,22 @@ using System.Threading;
 
 namespace RUCP.Transmitter
 {
-    class SocketListener
+    internal class SocketListener
     {
         private Thread receive_th;
         private ServerSocket serverSocket;
 
 
-        public SocketListener(ServerSocket ss)
+        internal SocketListener(ServerSocket server)
         {
             
 
-            serverSocket = ss;
+            serverSocket = server;
             receive_th = new Thread(Listener);
             receive_th.Start();
         }
 
-        public void Stop()
+        internal void Stop()
         {
             receive_th.Abort();
             receive_th.Join();
@@ -45,26 +46,27 @@ namespace RUCP.Transmitter
                 {
                     int receiveBytes = serverSocket.Socket.ReceiveFrom(out byte[] data);
                     Packet packet = Packet.Create(data, receiveBytes);
-             //       Debug.Log("пакет принят по каналу: " + packet.ReadChannel() + " number: "+packet.ReadNumber());
-                    switch (packet.ReadChannel())
+                   
+
+                    switch (packet.Channel)
                     {
 
                         case Channel.Unreliable://Пакет пришол по ненадежному каналу
                             serverSocket.AddPipeline(packet);
                             break;
                         case Channel.Reliable://Пакет пришол по надежному каналу
-                            serverSocket.ServerkInfo.received++;
+                            serverSocket.ServerInfo.received++;
                             SendConfirmACK(packet.ReadNumber(), Channel.ReliableACK);
                             if (serverSocket.bufferReliable.Check(packet))
                                 serverSocket.AddPipeline(packet);
                             break;
                         case Channel.Queue:
-                            serverSocket.ServerkInfo.received++;
+                            serverSocket.ServerInfo.received++;
                             SendConfirmACK(packet.ReadNumber(), Channel.QueueACK);
                             serverSocket.bufferQueue.Check(packet);
                             break;
                         case Channel.Discard:
-                            serverSocket.ServerkInfo.received++;
+                            serverSocket.ServerInfo.received++;
                             SendConfirmACK(packet.ReadNumber(), Channel.DiscardACK);
                             if (serverSocket.bufferDiscard.Check(packet))
                                 serverSocket.AddPipeline(packet);
@@ -86,7 +88,9 @@ namespace RUCP.Transmitter
 
 
                         case Channel.Connection://Подтверждение подключение
-                            serverSocket.SocketSender.OpenConnection();
+                            serverSocket.CryptographerRSA.Decrypt(packet);
+                            serverSocket.CryptographerAES.SetKey(packet);
+                            serverSocket.socketConnector.OpenConnection();
                             break;
                         case Channel.Disconnect:
                             Debug.Log("Разрыв соеденение сервером");

@@ -7,6 +7,7 @@ using RUCP.Collections;
 using RUCP.Network;
 using System;
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace RUCP.Packets
 {
@@ -15,58 +16,51 @@ namespace RUCP.Packets
 		/// <summary>
 		/// Длина заголовка пакета
 		/// </summary>
-		private static readonly int headerLength = 5;
-		internal long sendTime = 0;//Время отправки
-		private long resendTime = 0;//Время повторной отправки пакета при неудачной попытке доставки
-		internal volatile int sendCicle = 0;//При отправке или получении пакета, пакет блокируется для невозможности повторной отправки
+		internal const int headerLength = 6;
+
+		private long sendTime = 0;//Время отправки
+		public long ResendTime { get; private set; } = 0;//Время повторной отправки пакета при неудачной попытке доставки
+
+		private volatile int sendCicle = 0;
+		internal int SendCicle => sendCicle;//При отправке или получении пакета, пакет блокируется для невозможности повторной отправки
+		public bool isBlock => SendCicle != 0;
+
 		private volatile bool ack = false;
-
-
-        public long ResendTime => resendTime;
-		public bool isBlock => sendCicle != 0;
+		internal bool ACK { get => ack; set { ack = value; } }
 
 		/// <summary>
 		/// Записывает время отправки/переотправки
 		/// </summary>
-		public void WriteSendTime(long timeOut)
+		internal void WriteSendTime(long timeOut)
 		{
-			if (sendCicle == 1) sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-			resendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (timeOut * sendCicle);
+			if (SendCicle == 0) sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (timeOut * SendCicle);
+			sendCicle++;
 		}
-		public long CalculatePing()
+		internal long CalculatePing()
 		{
 			return (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sendTime);
 		}
 
-		public bool isAck()
+		public bool Encrypt
 		{
-			return ack;
+			get => (Data[0] & 0b1000_0000) == 0b1000_0000;
+			set { Data[0] |= 0b1000_0000; }
 		}
-
-		/***
-		 * Задает метку доставки пакета.
-		 * Задается автоматически при получении пакета от клиента с подтверждением доставки
-		 * @param ack
-		 */
-		public void setAck(bool ack)
-		{
-			//Debug.Log($"подтверждение полученно через: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sendTime}");
-			this.ack = ack;
-		}
-
-
 		/***
 		 * Возврощает канал по которому будет\был передан пакет
 		 * @return
 		 */
-		public int ReadChannel()
+		public int Channel
 		{
-			return (int)Data[0];
+			get => Data[0] & 0b0111_1111;
+			private set { Data[0] = (byte)value; }
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool isChannel(int channel)
 		{
-			return Data[0] == channel;
+			return Channel == channel;
 		}
 
 		/***
@@ -104,13 +98,13 @@ namespace RUCP.Packets
 
 		public long GetDelay()
         {
-			return resendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			return ResendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
 		}
 
         public int CompareTo(object obj)
         {
-			if (resendTime > ((Packet)obj).resendTime) return 1;
+			if (ResendTime > ((Packet)obj).ResendTime) return 1;
 			return -1;
 		}
     }

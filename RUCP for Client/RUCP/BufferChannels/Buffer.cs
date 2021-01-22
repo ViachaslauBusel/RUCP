@@ -63,7 +63,7 @@ namespace RUCP.BufferChannels
                 int index = number % sentPackages.Length;
                 if (sentPackages[index] != null && sentPackages[index].ReadNumber() == number)
                 {
-                    sentPackages[index].setAck(true);
+                    sentPackages[index].ACK = true;
                     ping = (int)sentPackages[index].CalculatePing();
                     sentPackages[index] = null;
 

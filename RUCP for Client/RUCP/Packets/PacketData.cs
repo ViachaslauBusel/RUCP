@@ -15,7 +15,7 @@ namespace RUCP.Packets
         protected int index = 0;
 
         public byte[] Data { get; protected set; } 
-        public int Length { get; protected set; }
+        internal int Length { get; set; }
 
         public int AvailableBytes => Length - index;
 

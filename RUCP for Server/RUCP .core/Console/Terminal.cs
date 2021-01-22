@@ -3,6 +3,7 @@
  * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
  * All rights reserved. */
 
+using RUCP.Cryptography;
 using RUCP.Debugger;
 using System;
 using System.Collections.Generic;
@@ -28,6 +29,8 @@ namespace RUCP.Console
             commands.Add("start", new Command("start", "The command starts the server", (q) => server.Start()));
             commands.Add("restart", new Command("restart", "The command restart the server", (q) => { server.Stop(); server.Start(); }));
             commands.Add("debug", new Command("debug", "Working with exceptions and messages", (q) => DebugCommand.Command(q)));
+            commands.Add("online", new Command("online", "Number of connected clients", (q) => System.Console.WriteLine($"online: {ClientList.online()}")));
+            commands.Add("keygen", new Command("keygen", "Generate a key to establish a secure connection", (q) => ContainerRSAKey.GenerateKey()));
         }
         public void Listen()
         {

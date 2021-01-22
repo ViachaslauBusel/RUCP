@@ -43,7 +43,7 @@ namespace RUCP.Tools
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <returns></returns>
-        public static int ShortCompare(int x, int y)
+        public static int UshortCompare(int x, int y)
         {
             if (x > y)
             {

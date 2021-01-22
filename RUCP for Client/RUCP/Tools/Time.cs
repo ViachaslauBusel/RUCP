@@ -7,10 +7,10 @@ using System;
 
 namespace RUCP.Tools
 {
-    class Time
+    public static class Time
     {
-       // private static DateTime time_start = DateTime.Now;
-        public static long currentTimeMillis
+
+        public static long CurrentTimeMillis
         {
             get
             {

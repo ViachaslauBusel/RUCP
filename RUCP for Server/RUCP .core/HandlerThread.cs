@@ -44,30 +44,38 @@ namespace RUCP
 
 				
 				ClientSocket client = packet.BindClient();  //Получаем оброботчик(Сокет) конкретного клиента
-				if (!client.isConnected())
+
+				if (!client.isConnected() && packet.isChannel(Channel.Connection))
 				{
-					if (packet.isChannel(Channel.Connection) && ClientList.AddClient(client.ID, client))
+					if (packet.Encrypt)
+						client.CryptographerRSA.Decrypt(packet);
+					float versionClient = packet.ReadFloat();
+					if (versionClient < Server.minSupportedVersion) { client.CloseConnection(); return; }
+
+					if (ClientList.AddClient(client.ID, client))
 					{
-						System.Console.WriteLine("Клиент добавлен");
-						if (client.openConnection(packet))//Если установка соеденения прошла успешна
-						{
+						//	System.Console.WriteLine("Клиент добавлен");
+					     	client.OpenConnection();//Если установка соеденения прошла успешна
+						
 							CheckingConnections.InsertClient(client);//Вставка клиента в очередь проверки соеденение
-																	 //отпровляем подтверждение клиенту
-							Packet.Create(client, Channel.Connection).Send();
-							System.Console.WriteLine("online: " + ClientList.online());
-						}
-						else
-						{
-							System.Console.WriteLine("Неудачная попытка соеденениея");
-							client.CloseConnection();
-						}
+							
+
+							
+							client.CryptographerRSA.SetPublicKey(packet);
+
+							//отпровляем подтверждение клиенту
+							Packet confirmPacket = Packet.Create(client, Channel.Connection);
+							client.CryptographerAES.WriteKey(confirmPacket);
+							client.CryptographerRSA.Encrypt(confirmPacket);
+							confirmPacket.Send();
 
 					}
 					return;
 				//	Debug.logError("HandlerThread", "Client not found: " + packet.Client.ID, null);
 				}
+				
 				//Обработка пакета
-				switch (packet.ReadChannel())
+				switch (packet.Channel)
 				{
 
 					case Channel.ReliableACK://Подтвердить доставку
@@ -84,14 +92,16 @@ namespace RUCP
 					case Channel.Connection:
 						//Если клиент уже есть в списке
 						{
-						//	Console.WriteLine("Не удалось добавить клиента");
-							if (client.isConnected())//Если клиент уже подключен
-							 Packet.Create(client, Channel.Connection).Send(); //отпровляем подтверждение клиенту
+							//отпровляем подтверждение клиенту
+							Packet confirmPacket = Packet.Create(client, Channel.Connection);
+							client.CryptographerAES.WriteKey(confirmPacket);
+							client.CryptographerRSA.Encrypt(confirmPacket);
+							confirmPacket.Send();
 						}
 						break;
 
 					case Channel.Disconnect:
-						System.Console.WriteLine("client Disconnect");
+					//	System.Console.WriteLine("client Disconnect");
 						client.CloseConnection();
 						break;
 

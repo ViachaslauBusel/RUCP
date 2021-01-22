@@ -19,17 +19,19 @@ namespace RUCP.Packets
 
                 if (Client == null)
                 {
-                    System.Console.Error.WriteLine("Error in Sender: client == null");
+                  Debug.LogError(new Exception("Error in Sender: client == null"));
                     return;
                 }
                 if (sendCicle != 0)
                 {
-                    System.Console.WriteLine("Пакет заблокирован, отправка невозможна");
+                    Debug.Log("Packet.Send()", "Пакет заблокирован, отправка невозможна");
                     return;
                 }
 
 
                 bool dispose = false;
+
+                if (Encrypt) Client.CryptographerAES.Encrypt(this);
 
                 if (Client.InsertBuffer(this))
                     Resender.Add(this); //Запись на переотправку
@@ -40,7 +42,6 @@ namespace RUCP.Packets
             }
             catch (BufferOverflowException e)
             {
-                System.Console.WriteLine("Переполнения буффера");
                 Debug.LogError(e);
                 Client.CloseConnection();
             }

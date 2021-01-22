@@ -31,11 +31,12 @@ namespace RUCP.Packets
             return ret;
         }
 
-        public byte[] ReadBytes(int len)
+        public byte[] ReadBytes()
         {
-            byte[] array = new byte[len];
-            Array.Copy(Data, index, array, 0, len);
-            index += len;
+            int length = ReadShort();
+            byte[] array = new byte[length];
+            Array.Copy(Data, index, array, 0, length);
+            index += length;
             return array;
         }
 
@@ -58,7 +59,7 @@ namespace RUCP.Packets
 
         public String ReadString()
         {
-            return Encoding.UTF8.GetString(ReadBytes(ReadShort())); 
+            return Encoding.UTF8.GetString(ReadBytes()); 
         }
 
 
