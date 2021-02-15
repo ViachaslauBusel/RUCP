@@ -33,7 +33,7 @@ namespace RUCP.Transmitter
                 lock (list_checking)
                 {
                     instance = new CheckingConnections();
-                    new Thread(new ThreadStart(instance.Run));
+                    new Thread(new ThreadStart(instance.Run)) { IsBackground = true };
                 }
             }
         }
@@ -76,7 +76,7 @@ namespace RUCP.Transmitter
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError(e);
+                    Debug.Log(e);
                 }
             }
         }

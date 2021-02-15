@@ -19,12 +19,12 @@ namespace RUCP.Packets
 
                 if (Client == null)
                 {
-                  Debug.LogError(new Exception("Error in Sender: client == null"));
+                  Debug.Log("Error in Sender: client == null", MsgType.ERROR);
                     return;
                 }
                 if (sendCicle != 0)
                 {
-                    Debug.Log("Packet.Send()", "Пакет заблокирован, отправка невозможна");
+                    Debug.Log("Package is blocked, sending is not possible", MsgType.ERROR);
                     return;
                 }
 
@@ -34,7 +34,7 @@ namespace RUCP.Packets
                 if (Encrypt) Client.CryptographerAES.Encrypt(this);
 
                 if (Client.InsertBuffer(this))
-                    Resender.Add(this); //Запись на переотправку
+                    Resender.Add(this); //Record for re-sending
                 else dispose = true;
 
                 UdpSocket.SendTo(Data, Length, Client.Address);
@@ -42,12 +42,12 @@ namespace RUCP.Packets
             }
             catch (BufferOverflowException e)
             {
-                Debug.LogError(e);
+                Debug.Log(e);
                 Client.CloseConnection();
             }
             catch (Exception e)
             {
-                Debug.LogError(e);
+                Debug.Log(e);
             }
         }
 

@@ -4,6 +4,7 @@
  * All rights reserved. */
 
 using RUCP.Collections;
+using RUCP.Debugger;
 using RUCP.Network;
 using RUCP.Packets;
 using System;
@@ -28,6 +29,7 @@ namespace RUCP.Transmitter
         internal void Add(Packet packet)
         {
             packet.WriteSendTime(serverSocket.NetworkInfo.GetTimeout());
+   
             elements.Add(packet);
         }
 
@@ -47,30 +49,29 @@ namespace RUCP.Transmitter
 
                     //Если первый пакеет в очереди подтвержден удаляем его из очереди и переходим к следуюещему
                     if (packet.ACK) continue;
-                   
+
                     //Если количество попыток переотправки пакета превышает 16, отключаем клиента
                     if (packet.SendCicle > 40)
                     {
-                        Debug.Log("Close Connection time: " + DateTimeOffset.UtcNow);
-                        Debug.Log("Время прошедшее с момента первой отправки пакета: " +packet.CalculatePing());
+                        Debug.Log($"Lost connection, remote node does not respond for: {packet.CalculatePing()}ms", MsgType.ERROR);
                         serverSocket.Close();
                         continue;
                     }
 
+
                     serverSocket.NetworkInfo.Resend++;
-               //     Debug.Log("Переотправка пакета");
+                    //     Debug.Log("Переотправка пакета");
                     serverSocket.Socket.Send(packet);
                     Add(packet); //Запись на переотправку
 
                 }
-                catch(ThreadAbortException)
+                catch (ThreadAbortException)
                 {
                     return;
                 }
                 catch (Exception e)
                 {
-                    Debug.Log($"sendCicle: {packet.SendCicle} timeOut: {serverSocket.NetworkInfo.GetTimeout()} delay:{packet.GetDelay()}");
-                 Debug.LogError(GetType().Name, e.Message, e.StackTrace);
+                    Debug.Log(e);
                 }
 
             }

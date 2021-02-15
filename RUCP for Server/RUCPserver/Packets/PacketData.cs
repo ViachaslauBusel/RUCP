@@ -17,7 +17,14 @@ namespace RUCP.Packets
         internal byte[] Data { get; } = new byte[1500]; //Буфер
         internal int Length { get; set; }
         //  public int length;//Размер данных
+        /// <summary>
+        /// Available bytes for reading
+        /// </summary>
         public int AvailableBytes => Length - index;
+        /// <summary>
+        /// The number of bytes written to the packet, not including the header
+        /// </summary>
+        public int WrittenBytes => Length - Packet.headerLength;
 
     }
 }

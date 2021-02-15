@@ -54,45 +54,45 @@ namespace RUCP
 
 					if (ClientList.AddClient(client.ID, client))
 					{
-						//	System.Console.WriteLine("Клиент добавлен");
-					     	client.OpenConnection();//Если установка соеденения прошла успешна
-						
-							CheckingConnections.InsertClient(client);//Вставка клиента в очередь проверки соеденение
-							
 
-							
-							client.CryptographerRSA.SetPublicKey(packet);
+						client.OpenConnection();//If the connection was successful
 
-							//отпровляем подтверждение клиенту
-							Packet confirmPacket = Packet.Create(client, Channel.Connection);
-							client.CryptographerAES.WriteKey(confirmPacket);
-							client.CryptographerRSA.Encrypt(confirmPacket);
-							confirmPacket.Send();
+						CheckingConnections.InsertClient(client);//Вставка клиента в очередь проверки соеденение
+
+
+
+						client.CryptographerRSA.SetPublicKey(packet);
+
+						//отпровляем подтверждение клиенту
+						Packet confirmPacket = Packet.Create(client, Channel.Connection);
+						client.CryptographerAES.WriteKey(confirmPacket);
+						client.CryptographerRSA.Encrypt(confirmPacket);
+						confirmPacket.Send();
 
 					}
 					return;
-				//	Debug.logError("HandlerThread", "Client not found: " + packet.Client.ID, null);
+				
 				}
 				
-				//Обработка пакета
+				//Package processing
 				switch (packet.Channel)
 				{
 
-					case Channel.ReliableACK://Подтвердить доставку
+					case Channel.ReliableACK://Confirmation of acceptance of the package by the other side
 						client.ConfirmReliableACK(packet.ReadNumber());
 						break;
-					case Channel.QueueACK:
+					case Channel.QueueACK://Confirmation of acceptance of the package by the other side
 						client.ConfirmQueueACK(packet.ReadNumber());
 						break;
-					case Channel.DiscardACK:
+					case Channel.DiscardACK://Confirmation of acceptance of the package by the other side
 						client.ConfirmDiscardACK(packet.ReadNumber());
 						break;
 
 
 					case Channel.Connection:
-						//Если клиент уже есть в списке
+						
 						{
-							//отпровляем подтверждение клиенту
+							//send confirmation of successful connection to the client
 							Packet confirmPacket = Packet.Create(client, Channel.Connection);
 							client.CryptographerAES.WriteKey(confirmPacket);
 							client.CryptographerRSA.Encrypt(confirmPacket);
@@ -102,7 +102,7 @@ namespace RUCP
 
 					case Channel.Disconnect:
 					//	System.Console.WriteLine("client Disconnect");
-						client.CloseConnection();
+						client.CloseConnection(false);
 						break;
 
 					case Channel.Reliable:
@@ -120,13 +120,11 @@ namespace RUCP
 						client.HandlerPack(packet);
 						break;
 				}
-				//long duration = System.nanoTime() - startTime;
-				//System.out.println("Время обработки пакета: "+duration);
 
 			}
 			catch (Exception e)
 			{
-					Debug.LogError(e);
+					Debug.Log(e);
 			}
 		//	}
 

@@ -17,9 +17,9 @@ namespace RUCP.Packets
 		/// <summary>
 		/// Длина заголовка пакета
 		/// </summary>
-		internal const int headerLength = 6;	
+		internal const int headerLength = 5;	
 		
-		private long sendTime = 0;//Время отправки
+		internal long SendTime { get; private set; } = 0;//Время отправки
 		public long ResendTime { get; private set; } = 0;//Время повторной отправки пакета при неудачной попытке доставки
 
 		private volatile int sendCicle = 0;
@@ -38,13 +38,13 @@ namespace RUCP.Packets
 		/// </summary>
 		internal void WriteSendTime()
 		{
-			if (sendCicle == 1) sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			if (sendCicle == 1) SendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.GetTimeout() * sendCicle;
 			sendCicle++;
 		}
 		internal void CalculatePing()
 		{
-		 	Client.Ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sendTime);
+		 	Client.Ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - SendTime);
 		}
 
 
@@ -55,15 +55,15 @@ namespace RUCP.Packets
 			return Client;
 		}
 		public bool Encrypt
-		{
-			get => (Data[0] & 0b1000_0000) == 0b1000_0000;
-			set { Data[0] |= 0b1000_0000; }
-		}
-		/***
+        {
+            get => (Data[0] & 0b1000_0000) == 0b1000_0000;
+			set { if (value) Data[0] |= 0b1000_0000; else Data[0] &= 0b0111_1111; }
+        }
+        /***
 		 * Возврощает канал по которому будет\был передан пакет
 		 * @return
 		 */
-		public int Channel
+        public int Channel
 		{
 			get => Data[0] & 0b0111_1111;
             private set { Data[0] = (byte)value; }

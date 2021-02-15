@@ -58,9 +58,9 @@ namespace RUCP.Cryptography
 
         internal void Dispose()
         {
-            encryptor.Dispose();
-            decryptor.Dispose();
-            aes.Dispose();
+            encryptor?.Dispose();
+            decryptor?.Dispose();
+            aes?.Dispose();
         }
     }
 }

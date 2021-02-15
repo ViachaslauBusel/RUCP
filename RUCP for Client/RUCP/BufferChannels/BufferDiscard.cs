@@ -3,6 +3,7 @@
  * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
  * All rights reserved. */
 
+using RUCP.Debugger;
 using RUCP.Network;
 using RUCP.Packets;
 using RUCP.Tools;
@@ -63,7 +64,7 @@ namespace RUCP.BufferChannels
 			}
 			catch (Exception e)
 			{
-				Debug.LogError(GetType().Name, e.ToString(), e.StackTrace);
+				Debug.Log(e);
 				return false;
 			}
 		}

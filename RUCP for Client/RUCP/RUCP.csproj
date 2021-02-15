@@ -36,7 +36,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Unity|AnyCPU'">
-    <OutputPath>..\..\..\..\Unity_Project\RUCP_Test\Assets\Plugins\</OutputPath>
+    <OutputPath>..\..\..\..\Unity_Project\FIRST\Assets\Plugins\</OutputPath>
     <Prefer32Bit>false</Prefer32Bit>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -57,9 +57,9 @@
     <Compile Include="Cryptography\AES.cs" />
     <Compile Include="Cryptography\RSA.cs" />
     <Compile Include="Cryptography\RSAKey.cs" />
-    <Compile Include="Debugger\DebugBuffer.cs" />
     <Compile Include="Debugger\DebugFile.cs" />
-    <Compile Include="Debugger\DebugObject.cs" />
+    <Compile Include="Debugger\Message.cs" />
+    <Compile Include="Debugger\MsgType.cs" />
     <Compile Include="Packets\Channel.cs" />
     <Compile Include="Collections\DelayQueue.cs" />
     <Compile Include="Collections\IDelayed.cs" />

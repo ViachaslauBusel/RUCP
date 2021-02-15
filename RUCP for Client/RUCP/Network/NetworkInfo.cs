@@ -33,7 +33,7 @@ namespace RUCP.Network
         /// <summary>
         /// Время до повторной отправки пакета при патери пакетов
         /// </summary>
-        public int GetTimeout() => Ping + 5 * ((RTT < 4) ? 4 : RTT);
+        public int GetTimeout() => Ping + 3 * ((RTT < 4) ? 4 : RTT);
 
 
         internal void SetPing(int ping)

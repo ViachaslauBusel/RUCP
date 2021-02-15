@@ -5,6 +5,7 @@
 
 using RUCP.BufferChannels;
 using RUCP.Cryptography;
+using RUCP.Debugger;
 using RUCP.Network;
 using RUCP.Packets;
 using RUCP.Transmitter;
@@ -46,7 +47,8 @@ namespace RUCP.Transmitter
                 {
                     int receiveBytes = serverSocket.Socket.ReceiveFrom(out byte[] data);
                     Packet packet = Packet.Create(data, receiveBytes);
-                   
+
+                    if (packet == null) continue;
 
                     switch (packet.Channel)
                     {
@@ -73,35 +75,35 @@ namespace RUCP.Transmitter
                             break;
 
 
-                        case Channel.ReliableACK://Подтвержденный АСК
+                        case Channel.ReliableACK://Confirmation of acceptance of the package by the other side
                             serverSocket.NetworkInfo.SetPing(
                                   serverSocket.bufferReliable.ConfirmAsk(packet.ReadNumber()));
                             break;
-                        case Channel.QueueACK://Подтвержденный АСК
+                        case Channel.QueueACK://Confirmation of acceptance of the package by the other side
                             serverSocket.NetworkInfo.SetPing(
                                   serverSocket.bufferQueue.ConfirmAsk(packet.ReadNumber()));
                             break;
-                        case Channel.DiscardACK://Подтвержденный АСК
+                        case Channel.DiscardACK://Confirmation of acceptance of the package by the other side
                             serverSocket.NetworkInfo.SetPing(
                             serverSocket.bufferDiscard.ConfirmAsk(packet.ReadNumber()));
                             break;
 
 
-                        case Channel.Connection://Подтверждение подключение
+                        case Channel.Connection://Confirmation of connection
                             serverSocket.CryptographerRSA.Decrypt(packet);
                             serverSocket.CryptographerAES.SetKey(packet);
                             serverSocket.socketConnector.OpenConnection();
                             break;
                         case Channel.Disconnect:
-                            Debug.Log("Разрыв соеденение сервером");
+                            Debug.Log("The server has decided to disconnect you");
                             serverSocket.Close();
                             break;
                     }
     
                 }
-                catch (SocketException)
+                catch (SocketException e)
                 {
-                   Debug.Log("LS error socket");
+                    Debug.Log(e);
                     serverSocket.Close();
                 }
                 catch (ThreadAbortException)
@@ -110,7 +112,7 @@ namespace RUCP.Transmitter
                 }
                 catch (Exception e)
                 {
-                    Debug.Log("Неизвестная ошибка в SocketListener: " + e.ToString());
+                    Debug.Log(e);
                 }
             }
         }

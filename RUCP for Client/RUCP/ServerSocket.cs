@@ -5,18 +5,13 @@
 
 using RUCP.BufferChannels;
 using RUCP.Cryptography;
+using RUCP.Debugger;
 using RUCP.Handler;
 using RUCP.Network;
 using RUCP.Packets;
 using RUCP.Transmitter;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
 
 namespace RUCP
 {
@@ -48,11 +43,10 @@ namespace RUCP
 
         public ServerSocket(string address, int port)
         {
-            // Получаем данные, необходимые для соединения
-
-            //удаленный IP-адрес
+            //Get the data required for the connection
+            //remote IP address
             remoteIP = IPAddress.Parse(address);
-
+            //remote port
             remotePort = port;
         }
         public void SetPublicRSAKey(byte[] modulus, byte[] exponent)
@@ -79,16 +73,16 @@ namespace RUCP
                 else return;
             }
         }
-        
+
 
         /// <summary>
-        /// Подключение к серверу
+        /// Server connection
         /// </summary>
         public void Connection()
         {
-             if(NetworkStatus != NetworkStatus.CLOSED) { Debug.Log("соединение уже установлено"); return; }
-            // Создаем endPoint по информации об удаленном хосте
-            Socket = new UdpSocket(new IPEndPoint(remoteIP, remotePort));
+             if(NetworkStatus != NetworkStatus.CLOSED) { Debug.Log("Connection is already established", MsgType.WARNING); return; }
+            // Create an endPoint based on information about a remote host
+            Socket = new UdpSocket(new IPEndPoint(remoteIP, remotePort), this);
 
             NetworkInfo = new NetworkInfo();
             ServerInfo = new ServerInfo();
@@ -98,9 +92,9 @@ namespace RUCP
             bufferDiscard = new BufferDiscard(500);
 
             socketConnector = new SocketConnector(this);
-            //Создаем обьект для отправки пакетов
+            //Create an object for sending packets
             socketSender = new SocketSender(this);
-            //Запускаем поток слушатель для прием пакетов
+            //Start the listener stream to receive packets
             socketListener = new SocketListener(this);
 
             CryptographerRSA = new RSA();
@@ -109,33 +103,36 @@ namespace RUCP
             if (publicRSAKey != null)
                 CryptographerRSA.SetPublicKey(publicRSAKey.Modulus, publicRSAKey.Exponent);
 
-            socketConnector.Connect();// Подключение к серверу
+            socketConnector.Connect();
         }
-
 
         public void Close()
         {
-            Debug.Log("Закрытие соединение");
-            Packet packet =  Packet.Create(Channel.Disconnect);
-            socketSender?.Send(packet);
+                Packet packet = Packet.Create(Channel.Disconnect);
+                socketSender?.Send(packet);
 
 
-            socketSender?.Stop();
-            socketSender = null;
+                socketSender?.Stop();
+                socketSender = null;
+
+                
+
+                socketConnector?.Stop();
+                socketConnector = null;
+
+                Socket?.Close();
+                Socket = null;
+
+                CryptographerRSA?.Dispose();
+                CryptographerRSA = null;
+                CryptographerAES?.Dispose();
+                CryptographerAES = null;
+
+                publicRSAKey = null;
 
             socketListener?.Stop();
             socketListener = null;
 
-            socketConnector?.Stop();
-            socketConnector = null;
-
-            Socket?.Close();
-            Socket = null;
-
-            CryptographerRSA?.Dispose();
-            CryptographerAES?.Dispose();
-
-            publicRSAKey = null;
         }
 
 
@@ -147,7 +144,7 @@ namespace RUCP
         }
 
         /// <summary>
-        /// Отпровляет данные по сети
+        /// Sends data over the network
         /// </summary>
         public void Send(Packet packet)
         {

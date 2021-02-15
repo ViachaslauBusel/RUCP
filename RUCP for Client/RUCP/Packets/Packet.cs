@@ -16,7 +16,7 @@ namespace RUCP.Packets
 		/// <summary>
 		/// Длина заголовка пакета
 		/// </summary>
-		internal const int headerLength = 6;
+		internal const int headerLength = 5;
 
 		private long sendTime = 0;//Время отправки
 		public long ResendTime { get; private set; } = 0;//Время повторной отправки пакета при неудачной попытке доставки
@@ -33,9 +33,14 @@ namespace RUCP.Packets
 		/// </summary>
 		internal void WriteSendTime(long timeOut)
 		{
-			if (SendCicle == 0) sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (timeOut * SendCicle);
-			sendCicle++;
+			if (sendCicle++ == 0) sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + timeOut;
+			
+		}
+		public long GetDelay()
+		{
+			return ResendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
 		}
 		internal long CalculatePing()
 		{
@@ -45,7 +50,7 @@ namespace RUCP.Packets
 		public bool Encrypt
 		{
 			get => (Data[0] & 0b1000_0000) == 0b1000_0000;
-			set { Data[0] |= 0b1000_0000; }
+			set { if (value) Data[0] |= 0b1000_0000; else Data[0] &= 0b0111_1111; }
 		}
 		/***
 		 * Возврощает канал по которому будет\был передан пакет
@@ -96,11 +101,7 @@ namespace RUCP.Packets
 			return BitConverter.ToInt16(Data, 1);
 		}
 
-		public long GetDelay()
-        {
-			return ResendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-		}
 
         public int CompareTo(object obj)
         {

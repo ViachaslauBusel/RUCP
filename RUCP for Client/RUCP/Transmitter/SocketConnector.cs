@@ -1,4 +1,5 @@
-﻿using RUCP.Network;
+﻿using RUCP.Debugger;
+using RUCP.Network;
 using RUCP.Packets;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace RUCP.Transmitter
     {
         protected ServerSocket server;
         private Object connectionLock = new object();
+        private long firstPing;
 
 
         internal SocketConnector(ServerSocket server)
@@ -30,10 +32,14 @@ namespace RUCP.Transmitter
             server.CryptographerRSA.WritePublicKey(packet);
             server.CryptographerRSA.Encrypt(packet);
 
+            lock (connectionLock)
+            {
+                if (server.NetworkStatus != NetworkStatus.CLOSED) return;//Если соеденение не в закрытом состоянии возврат
 
-
-            new Thread(() => Connector(packet)).Start();
-
+                server.NetworkStatus = NetworkStatus.LISTENING;//Устанавливаем состояние в подключение
+            }
+                new Thread(() => Connector(packet)).Start();
+            
         }
 
         /// <summary>
@@ -43,22 +49,17 @@ namespace RUCP.Transmitter
         {
             lock (connectionLock)
             {
-                if (server.NetworkStatus != NetworkStatus.CLOSED) return;//Если соеденение не в закрытом состоянии возврат
-
-                server.NetworkStatus = NetworkStatus.LISTENING;//Устанавливаем состояние в подключение
-
 
                 int max_cicle = 20;//10 сек ожидание подключения
                 while (server.NetworkStatus == NetworkStatus.LISTENING) //Ожидаем подключение
                 {
-
+                    firstPing = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     //Отпровляем пакет
                     server.Socket.Send(open_packet);
 
 
                     Monitor.Wait(connectionLock, 500); //Ожидание пакета "подтверждение подключение" от сервера
-                    max_cicle--;
-                    if (max_cicle < 0) server.NetworkStatus = NetworkStatus.CLOSED;
+                    if (--max_cicle < 0) server.NetworkStatus = NetworkStatus.CLOSED;
 
                 }
             }
@@ -72,7 +73,11 @@ namespace RUCP.Transmitter
             lock (connectionLock)
             {
                 if (server.NetworkStatus == NetworkStatus.LISTENING)
+                {
                     server.NetworkStatus = NetworkStatus.СONNECTED;
+                    server.NetworkInfo.Ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - firstPing);
+                    Debug.Log("Connection established");
+                }
             }
         }
 
@@ -80,7 +85,11 @@ namespace RUCP.Transmitter
         {
             lock (connectionLock)
             {
+                if(server.NetworkStatus == NetworkStatus.СONNECTED)
+                    Debug.Log("Closing the connection");
+
                 server.NetworkStatus = NetworkStatus.CLOSED;
+                
             }
         }
     }

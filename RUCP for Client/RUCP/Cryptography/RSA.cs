@@ -1,4 +1,5 @@
-﻿using RUCP.Packets;
+﻿using RUCP.Debugger;
+using RUCP.Packets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace RUCP.Cryptography
 {
     internal class RSA
     {
-        private RSACryptoServiceProvider decryptor = new RSACryptoServiceProvider();
+        private RSACryptoServiceProvider decryptor;
         private RSACryptoServiceProvider encryptor;
 
         internal void SetPublicKey(byte[] modulus, byte[] exponent)
@@ -24,6 +25,7 @@ namespace RUCP.Cryptography
         }
         internal void WritePublicKey(Packet packet)
         {
+            decryptor = new RSACryptoServiceProvider();
             RSAParameters publicKey = decryptor.ExportParameters(false);
             packet.WriteBytes(publicKey.Modulus);
             packet.WriteBytes(publicKey.Exponent);
@@ -45,7 +47,7 @@ namespace RUCP.Cryptography
             }
             catch (Exception e)
             {
-                Debug.Log("Failed to encrypt package RSA: "+e);
+                Debug.Log(e);
             }
         }
         internal void Decrypt(Packet packet)

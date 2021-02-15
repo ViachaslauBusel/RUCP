@@ -7,8 +7,6 @@ using RUCP.Collections;
 using RUCP.Debugger;
 using RUCP.Packets;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 
 namespace RUCP.Transmitter
@@ -33,7 +31,7 @@ namespace RUCP.Transmitter
                 lock (elements)
                 {
                     instance = new Resender();
-                    new Thread(() => instance.Run()) { IsBackground = false }.Start();
+                    new Thread(() => instance.Run()) { IsBackground = true }.Start();
                 }
             }
         }
@@ -45,15 +43,14 @@ namespace RUCP.Transmitter
                 {
                     Packet packet = elements.Take();
 
-                    //Если первый пакеет в очереди подтвержден удаляем его из очереди и переходим к следуюещему
-                    if (packet.ACK || !packet.Client.isConnected()) { packet.Dispose(); continue; }//Или клиент отключен
+                    //If the first packet in the queue is confirmed or the client is disconnected, remove it from the queue and go to the next
+                    if (packet.ACK || !packet.Client.isConnected()) { packet.Dispose(); continue; }
 
-                    //Если количество попыток переотправки пакета превышает 20, отключаем клиента
+                    //If the number of attempts to resend the packet exceeds 20, disconnect the client
                     if (packet.SendCicle > 20)
                     {
-                        Debug.Log("Resender", packet.Client.ID + ": Client Close Connection: " + packet.Client.Address + " time: " + DateTimeOffset.UtcNow);
-                        Debug.Log("Resender", "Packet is closed, type: " + packet.ReadType() + " channel: "+ packet.Channel + " number: " + packet.ReadNumber());
-                        
+                        Debug.Log($"Lost connection, remote node does not respond for: {packet.SendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}ms", MsgType.ERROR);
+
                         packet.Client.CloseConnection();
                         packet.Dispose();
                         continue;
@@ -65,7 +62,7 @@ namespace RUCP.Transmitter
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError(e);
+                    Debug.Log(e);
                 }
 
             }

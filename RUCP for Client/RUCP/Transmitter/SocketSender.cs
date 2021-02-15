@@ -4,6 +4,7 @@
  * All rights reserved. */
 
 using RUCP.Cryptography;
+using RUCP.Debugger;
 using RUCP.Network;
 using RUCP.Packets;
 using RUCP.Transmitter;
@@ -34,7 +35,7 @@ namespace RUCP.Transmitter
         /// </summary>
         internal void Send(Packet packet)
         {
-           if(packet.isBlock) { Debug.Log("Пакет заблокирован, отправка невозможна"); return; }
+           if(packet.isBlock) { Debug.Log("Package is blocked, sending is not possible", MsgType.ERROR); return; }
            if(packet.Encrypt) server.CryptographerAES.Encrypt(packet);
             switch (packet.Channel)
             {

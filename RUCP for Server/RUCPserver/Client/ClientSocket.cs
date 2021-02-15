@@ -90,12 +90,12 @@ namespace RUCP.Client
 			profile.CheckingConnection();
 		}
 		/// <summary>
-		/// Удаление ClientInfo из списка соедений и вызов завершающего метода в профиле
+		/// Removing a client from the list of connections and calling the CloseConnection method in the profile
 		/// </summary>
-		public void CloseConnection()
+		public void CloseConnection(bool disconnect = true)
 		{
-		//	System.Console.WriteLine("Закрытие соединение");
-			Disconnect();
+			if(disconnect)
+			   Disconnect();
 			if (ClientList.RemoveClient(ID))
 			{
 				profile.CloseConnection();
@@ -159,7 +159,7 @@ namespace RUCP.Client
 			SendACK(packet, Channel.ReliableACK);
 			//Отправка ACK<<
 			if (bufferReliable.Check(packet))
-				profile.ChannelRead(packet);
+				HandlerPack(packet);
 		}
 		internal void ProcessQueue(Packet packet)
 		{

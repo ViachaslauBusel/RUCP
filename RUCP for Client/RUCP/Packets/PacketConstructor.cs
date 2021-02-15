@@ -35,7 +35,11 @@ namespace RUCP.Packets
 			Length = copy_packet.Length;
 		}
 
-		internal static Packet Create(byte[] data, int bytesReceived) => new Packet(data, bytesReceived);
+		internal static Packet Create(byte[] data, int bytesReceived)
+		{
+			if (data == null || data.Length < Packet.headerLength) return null;
+		 return	new Packet(data, bytesReceived);
+		}
 		private Packet(byte[] data, int bytesReceived)
 		{
 			sendCicle = 1;

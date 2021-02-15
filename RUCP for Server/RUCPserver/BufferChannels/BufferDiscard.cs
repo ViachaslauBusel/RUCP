@@ -69,7 +69,7 @@ namespace RUCP.BufferChannels
 			}
 			catch (Exception e)
 			{
-				Debug.LogError(e);
+				Debug.Log(e);
 			}
 		}
 	}

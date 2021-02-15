@@ -21,7 +21,7 @@ namespace RUCP
     public class Server
     {
 		public static string Version => $"ver. {version.ToString("0.###")}a";
-		internal const float version = 0.003f;
+		internal const float version = 0.004f;
 		internal const float minSupportedVersion = 0.003f;
 		/***
 		 * Буфер для хранение пакетов в очереди
@@ -78,7 +78,7 @@ namespace RUCP
 			catch (Exception e)
 			{
 				System.Console.WriteLine("Failed to start server");
-				Debug.LogError(e);
+				Debug.Log(e);
 			}
 		}
 
@@ -127,11 +127,11 @@ namespace RUCP
 					break;
 					if (e.ErrorCode == 10054)
 						continue;
-					Debug.LogError(e);
+					Debug.Log(e);
 				}
 				catch (Exception e)
 				{
-					Debug.LogError(e);
+					Debug.Log(e);
 				}
 			}
 

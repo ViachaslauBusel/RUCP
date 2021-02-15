@@ -1,10 +1,6 @@
 ﻿using NUnit.Framework;
 using RUCP.Packets;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RUCP_Test
 {
@@ -53,14 +49,14 @@ namespace RUCP_Test
         [Test]
         public void ChannelRW_Test()
         {
-            Packet packet = Packet.Create(Channel.Connection);
-            Assert.IsTrue(packet.isChannel(Channel.Connection));
-            Assert.IsTrue(packet.Encrypt == false);
-            packet.Encrypt = true;
-            Assert.IsTrue(packet.isChannel(Channel.Connection));
-            Assert.IsTrue(packet.Encrypt == true);
+            /*  Packet packet = Packet.Create(Channel.Connection);
+              Assert.IsTrue(packet.isChannel(Channel.Connection));
+              Assert.IsTrue(packet.Encrypt == false);
+              packet.Encrypt = true;
+              Assert.IsTrue(packet.isChannel(Channel.Connection));
+              Assert.IsTrue(packet.Encrypt == true);*/
 
-            packet = Packet.Create(Channel.Reliable);
+            Packet packet = Packet.Create(Channel.Reliable);
             Assert.IsTrue(packet.isChannel(Channel.Reliable));
             Assert.IsTrue(packet.Encrypt == false);
             packet.Encrypt = true;

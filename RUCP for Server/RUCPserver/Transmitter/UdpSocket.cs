@@ -21,8 +21,9 @@ namespace RUCP.Transmitter
         {
             if (socket != null) throw new Exception("The server is already running");
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            IPEndPoint localIP = new IPEndPoint(IPAddress.Parse("127.0.0.1"), localPort);
+            IPEndPoint localIP = new IPEndPoint(IPAddress.Any, localPort);
             socket.Bind(localIP);
+           
             //udpClient = new UdpClient(localPort);
         }
 
@@ -33,21 +34,26 @@ namespace RUCP.Transmitter
         internal static void SendTo(byte[] data, int size, IPEndPoint remoteAdress)
         {
              socket.SendTo(data, size, SocketFlags.None, remoteAdress);
-         //   udpClient.Send(data, size, remoteAdress);
+          //  udpClient.Send(data, size, remoteAdress);
         }
 
         internal static void ReceiveFrom(ref Packet packet)
         {
+
             EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
+          //  byte[] buffer = udpClient.Receive(ref senderRemote);
+          //  Array.Copy(buffer, packet.Data, buffer.Length);
+         //   packet.address = senderRemote;
+          //  packet.Length = buffer.Length;
             packet.Length =  socket.ReceiveFrom(packet.Data, ref senderRemote);
             packet.address = (IPEndPoint)senderRemote;
         }
 
         internal static void Close()
         {
-         //   udpClient.Close();
-            socket?.Close();
-            socket = null;
+          //  udpClient.Close();
+           socket?.Close();
+           socket = null;
         }
 
         

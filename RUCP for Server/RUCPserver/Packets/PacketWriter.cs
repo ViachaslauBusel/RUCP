@@ -63,5 +63,14 @@ namespace RUCP.Packets
             byte[] bytes = Encoding.UTF8.GetBytes(value);
             WriteBytes(bytes);
         }
+
+      /*  public void Write(float f) => WriteFloat(f);
+        public void Write(int i) => WriteInt(i);
+        public void Write(long l) => WriteLong(l);
+        public void Write(short s) => WriteShort(s);
+        public void Write(byte b) => WriteByte(b);
+        public void Write(bool b) => WriteBool(b);
+        public void Write(string s) => WriteString(s);*/
+
     }
 }

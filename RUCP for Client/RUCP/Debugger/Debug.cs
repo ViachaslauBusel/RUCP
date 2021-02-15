@@ -5,6 +5,7 @@
 
 using RUCP.Debugger;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -12,30 +13,27 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace RUCP
+namespace RUCP.Debugger
 {
     public class Debug
     {
-        public static DebugObject Object { get; private set; }
-
-        public static void Start()
+        private static ConcurrentQueue<Message> messages = new ConcurrentQueue<Message>();
+        internal static void Log(string message, MsgType msgType = MsgType.INFO)
         {
-            Object = new DebugBuffer();
+            messages.Enqueue(new Message(message, type:msgType));
         }
 
-        internal static void Log(string message)
+        internal static void Log(Exception exception)
         {
-            Object?.Log(message);
+            messages.Enqueue(new Message(exception.Message, exception.StackTrace, MsgType.ERROR));
         }
 
-        public static void Stop()
+        public static Message GetMessage()
         {
-            Object = null;
+            messages.TryDequeue(out Message message);
+            return message;
         }
 
-        internal static void LogError(string name, string v, string stackTrace)
-        {
-            Object?.LogError(name, v, stackTrace);
-        }
+       
     }
 }

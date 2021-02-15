@@ -3,6 +3,7 @@
  * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
  * All rights reserved. */
 
+using RUCP.Debugger;
 using RUCP.Packets;
 using System;
 using System.Collections.Generic;
@@ -16,9 +17,11 @@ namespace RUCP.Transmitter
     {
         private IPEndPoint remotePoint;
         private UdpClient udpClient;
+        private ServerSocket server;
 
-        internal UdpSocket(IPEndPoint remoteAdress)
+        internal UdpSocket(IPEndPoint remoteAdress, ServerSocket serverSocket)
         {
+            server = serverSocket;
             udpClient = new UdpClient(0);
             remotePoint = remoteAdress;
             udpClient.Connect(remotePoint);
@@ -36,7 +39,7 @@ namespace RUCP.Transmitter
             }
             catch (SocketException e)
             {
-                Debug.Log($"e: {e.ErrorCode} : {e.Message}");
+                Debug.Log(e);
             }
         }
 
@@ -51,7 +54,12 @@ namespace RUCP.Transmitter
             }
             catch (SocketException e)
             {
-                Debug.Log($"e: {e.ErrorCode} : {e.Message}");
+                Debug.Log(e);
+                //The remote host forcibly dropped the existing connection.
+                if (e.ErrorCode == 10054)
+                {
+                    server.Close();
+                }
             }
             return 0;
         }
