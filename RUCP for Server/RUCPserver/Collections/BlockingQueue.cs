@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace RUCP.Collections
 {
-    public class DelayQueue<T> where T : IDelayed, IComparable
+    public class BlockingQueue<T> where T : IDelayed, IComparable
     {
         private PriorityQueue<T> container = new PriorityQueue<T>();
 

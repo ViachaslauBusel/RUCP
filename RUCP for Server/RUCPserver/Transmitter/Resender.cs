@@ -7,6 +7,7 @@ using RUCP.Collections;
 using RUCP.Debugger;
 using RUCP.Packets;
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 
 namespace RUCP.Transmitter
@@ -15,7 +16,7 @@ namespace RUCP.Transmitter
     {
         private static Resender instance = null;
 
-        private static DelayQueue<Packet> elements = new DelayQueue<Packet>();
+        private static BlockingQueue<Packet> elements = new BlockingQueue<Packet>();
 
 
         internal static void Add(Packet packet)
