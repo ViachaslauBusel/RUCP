@@ -38,9 +38,8 @@ namespace RUCP.Packets
 		/// </summary>
 		internal void WriteSendTime()
 		{
-			if (sendCicle == 1) SendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.GetTimeout() * sendCicle;
-			sendCicle++;
+			if (sendCicle++ == 0) SendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.GetTimeout();
 		}
 		internal void CalculatePing()
 		{

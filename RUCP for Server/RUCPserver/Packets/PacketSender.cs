@@ -38,6 +38,7 @@ namespace RUCP.Packets
                 else dispose = true;
 
                 UdpSocket.SendTo(Data, Length, Client.Address);
+
                 if (dispose) Dispose();
             }
             catch (BufferOverflowException e)

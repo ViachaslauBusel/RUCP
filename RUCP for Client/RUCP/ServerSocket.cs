@@ -10,6 +10,7 @@ using RUCP.Handler;
 using RUCP.Network;
 using RUCP.Packets;
 using RUCP.Transmitter;
+using System;
 using System.Collections.Concurrent;
 using System.Net;
 
@@ -40,6 +41,8 @@ namespace RUCP
         internal RSA CryptographerRSA { get; private set; } 
         internal AES CryptographerAES { get; private set; }
         private RSAKey publicRSAKey = null;
+
+        internal object lockStatus = new object();
 
         public ServerSocket(string address, int port)
         {
@@ -80,59 +83,74 @@ namespace RUCP
         /// </summary>
         public void Connection()
         {
-             if(NetworkStatus != NetworkStatus.CLOSED) { Debug.Log("Connection is already established", MsgType.WARNING); return; }
-            // Create an endPoint based on information about a remote host
-            Socket = new UdpSocket(new IPEndPoint(remoteIP, remotePort), this);
+            try
+            {
+                lock (lockStatus)
+                {
+                    if (NetworkStatus != NetworkStatus.CLOSED) { Debug.Log("Connection already started", MsgType.WARNING); return; }
+                    NetworkStatus = NetworkStatus.LISTENING;
 
-            NetworkInfo = new NetworkInfo();
-            ServerInfo = new ServerInfo();
+                    // Create an endPoint based on information about a remote host
+                    Socket = new UdpSocket(new IPEndPoint(remoteIP, remotePort), this);
 
-            bufferReliable = new BufferReliable(500);
-            bufferQueue = new BufferQueue(this, 500);
-            bufferDiscard = new BufferDiscard(500);
+                    NetworkInfo = new NetworkInfo();
+                    ServerInfo = new ServerInfo();
 
-            socketConnector = new SocketConnector(this);
-            //Create an object for sending packets
-            socketSender = new SocketSender(this);
-            //Start the listener stream to receive packets
-            socketListener = new SocketListener(this);
+                    bufferReliable = new BufferReliable(500);
+                    bufferQueue = new BufferQueue(this, 500);
+                    bufferDiscard = new BufferDiscard(500);
 
-            CryptographerRSA = new RSA();
-            CryptographerAES = new AES();
+                    socketConnector = new SocketConnector(this);
+                    //Create an object for sending packets
+                    socketSender = new SocketSender(this);
+                    //Start the listener stream to receive packets
+                    socketListener = new SocketListener(this);
 
-            if (publicRSAKey != null)
-                CryptographerRSA.SetPublicKey(publicRSAKey.Modulus, publicRSAKey.Exponent);
 
-            socketConnector.Connect();
+                    CryptographerRSA = new RSA();
+                    CryptographerAES = new AES();
+
+                    if (publicRSAKey != null)
+                        CryptographerRSA.SetPublicKey(publicRSAKey.Modulus, publicRSAKey.Exponent);
+
+                    socketConnector.Connect();
+
+                }
+            }
+            catch { }
         }
 
         public void Close()
         {
+            try
+            {
                 Packet packet = Packet.Create(Channel.Disconnect);
                 socketSender?.Send(packet);
+                lock (lockStatus)
+                {
 
+                    socketSender?.Stop();
+                    socketSender = null;
 
-                socketSender?.Stop();
-                socketSender = null;
+                    socketConnector = null;
 
-                
+                    Socket?.Close();
+                    Socket = null;
 
-                socketConnector?.Stop();
-                socketConnector = null;
+                    CryptographerRSA?.Dispose();
+                    CryptographerRSA = null;
+                    CryptographerAES?.Dispose();
+                    CryptographerAES = null;
 
-                Socket?.Close();
-                Socket = null;
+                    publicRSAKey = null;
 
-                CryptographerRSA?.Dispose();
-                CryptographerRSA = null;
-                CryptographerAES?.Dispose();
-                CryptographerAES = null;
+                    socketListener?.Stop();
+                    socketListener = null;
 
-                publicRSAKey = null;
-
-            socketListener?.Stop();
-            socketListener = null;
-
+                    NetworkStatus = NetworkStatus.CLOSED;
+                }
+            }
+            catch { }
         }
 
 
@@ -148,7 +166,11 @@ namespace RUCP
         /// </summary>
         public void Send(Packet packet)
         {
-            socketSender?.Send(packet);
+            try
+            {
+                socketSender?.Send(packet);
+            }
+            catch { }
         }
 
     }

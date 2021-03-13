@@ -36,6 +36,7 @@ namespace RUCP.Transmitter
                 }
             }
         }
+
         internal void Run()
         {
             while (true)
@@ -44,13 +45,14 @@ namespace RUCP.Transmitter
                 {
                     Packet packet = elements.Take();
 
+
                     //If the first packet in the queue is confirmed or the client is disconnected, remove it from the queue and go to the next
                     if (packet.ACK || !packet.Client.isConnected()) { packet.Dispose(); continue; }
 
                     //If the number of attempts to resend the packet exceeds 20, disconnect the client
                     if (packet.SendCicle > 20)
                     {
-                        Debug.Log($"Lost connection, remote node does not respond for: {packet.SendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}ms", MsgType.ERROR);
+                        Debug.Log($"Lost connection, remote node does not respond for: {packet.SendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}ms", MsgType.WARNING);
 
                         packet.Client.CloseConnection();
                         packet.Dispose();

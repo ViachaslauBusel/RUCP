@@ -151,6 +151,7 @@ namespace RUCP
 				//Отправка клиенту команды на отключение и очистка списка клиентов
 				client.CloseConnection();
 			}
+	
 
 			System.Console.WriteLine("RUCP shutdown");
 		}

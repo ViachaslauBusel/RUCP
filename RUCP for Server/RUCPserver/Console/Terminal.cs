@@ -61,7 +61,10 @@ namespace RUCP.Console
 
         public void AddCommand(Command command)
         {
-            commands.Add(command.Name, command);
+            if (commands.ContainsKey(command.Name))
+            { commands[command.Name] = command; }
+            else
+            { commands.Add(command.Name, command); }
         }
 
         internal static void PrintHelp(string name, string description)

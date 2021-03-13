@@ -14,6 +14,7 @@ namespace RUCP.Collections
     {
         private PriorityQueue<T> container = new PriorityQueue<T>();
 
+
         public void Add(T t)
         {
             lock (container)
@@ -41,5 +42,6 @@ namespace RUCP.Collections
 
             }
         }
+
     }
 }
