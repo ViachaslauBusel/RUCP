@@ -52,7 +52,8 @@ namespace RUCP.Transmitter
                     //If the number of attempts to resend the packet exceeds 20, disconnect the client
                     if (packet.SendCicle > 20)
                     {
-                        Debug.Log($"Lost connection, remote node does not respond for: {packet.SendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}ms", MsgType.WARNING);
+                        Debug.Log($"Lost connection, remote node does not respond for: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.SendTime}ms " +
+                                  $"timeout:{packet.Client.GetTimeout()}ms", MsgType.WARNING);
 
                         packet.Client.CloseConnection();
                         packet.Dispose();

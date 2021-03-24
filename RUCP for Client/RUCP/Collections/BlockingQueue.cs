@@ -3,17 +3,32 @@
  * Copyright (c) 2020, Vyacheslav Busel (yazZ3va)
  * All rights reserved. */
 
+using RUCP.Debugger;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace RUCP.Collections
 {
-    public class DelayQueue<T> where T : IDelayed, IComparable
+    public class BlockingQueue<T> where T : IDelayed, IComparable
     {
         private PriorityQueue<T> container = new PriorityQueue<T>();
 
+        private bool blocking = true;
+        public bool isBlocking
+        {
+            get => blocking;
+            set
+            {
+                    lock (container)
+                    {
+                        blocking = value;
+                        Monitor.PulseAll(container);
+                    }
+            }
+        }
         public void Add(T t)
         {
             lock (container)
@@ -31,7 +46,10 @@ namespace RUCP.Collections
                 while (true)
                 {
                     if (container.Count == 0)
-                    { Monitor.Wait(container); continue; }
+                    {
+                        if (blocking) { Monitor.Wait(container); continue; }
+                        return default;
+                    }
 
                     long time = container.Peek().GetDelay();
                     if (time > 0) Monitor.Wait(container, (int)time);

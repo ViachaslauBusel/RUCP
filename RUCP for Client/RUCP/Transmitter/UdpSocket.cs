@@ -45,23 +45,9 @@ namespace RUCP.Transmitter
 
         internal int ReceiveFrom(out byte[] data)
         {
-            data = null;
-            try
-            {
-                IPEndPoint iPEnd = null;
+            IPEndPoint iPEnd = null;
             data = udpClient.Receive(ref iPEnd);
             return data.Length;
-            }
-            catch (SocketException e)
-            {
-                Debug.Log(e);
-                //The remote host forcibly dropped the existing connection.
-                if (e.ErrorCode == 10054)
-                {
-                    server.Close();
-                }
-            }
-            return 0;
         }
 
         internal void Close()

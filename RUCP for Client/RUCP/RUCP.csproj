@@ -61,7 +61,7 @@
     <Compile Include="Debugger\Message.cs" />
     <Compile Include="Debugger\MsgType.cs" />
     <Compile Include="Packets\Channel.cs" />
-    <Compile Include="Collections\DelayQueue.cs" />
+    <Compile Include="Collections\BlockingQueue.cs" />
     <Compile Include="Collections\IDelayed.cs" />
     <Compile Include="Collections\PriorityQueue.cs" />
     <Compile Include="Network\ServerInfo.cs" />

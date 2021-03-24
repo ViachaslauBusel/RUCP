@@ -147,10 +147,15 @@ namespace RUCP
                     socketListener?.Stop();
                     socketListener = null;
 
-                    NetworkStatus = NetworkStatus.CLOSED;
+                   
+                    Debug.Log("Close connection");
                 }
             }
-            catch { }
+            catch (Exception e){ Debug.Log($"Failed to successfully close the connection:{e}", MsgType.ERROR); }
+            finally
+            {
+                NetworkStatus = NetworkStatus.CLOSED;
+            }
         }
 
 

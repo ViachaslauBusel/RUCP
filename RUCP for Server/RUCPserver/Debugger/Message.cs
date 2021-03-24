@@ -34,13 +34,13 @@ namespace RUCP.Debugger
             switch (Type)
             {
                 case MsgType.INFO:
-                    Terminal.Print(ToString(), ConsoleColor.White);
+                    Terminal.PrintLine(ToString(), ConsoleColor.White);
                     break;
                 case MsgType.WARNING:
-                    Terminal.Print(ToString(), ConsoleColor.Yellow);
+                    Terminal.PrintLine(ToString(), ConsoleColor.Yellow);
                     break;
                 case MsgType.ERROR:
-                    Terminal.Print(ToString(), ConsoleColor.Red);
+                    Terminal.PrintLine(ToString(), ConsoleColor.Red);
                     break;
             }
         }

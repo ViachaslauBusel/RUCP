@@ -70,22 +70,27 @@ namespace RUCP.Console
         internal static void PrintHelp(string name, string description)
         {
             if (string.IsNullOrEmpty(description)) return;
-            ConsoleColor defaultColor = System.Console.ForegroundColor;
-            System.Console.ForegroundColor = ConsoleColor.Blue;
-            System.Console.Write(name);
-            System.Console.ForegroundColor = defaultColor;
+            Print(name, ConsoleColor.Blue);
             System.Console.WriteLine($"  {description}");
         }
-        internal static void PrintError(string msg)
-        {
-            Print(msg, ConsoleColor.Red);
-        }
-        internal static void Print(string msg, ConsoleColor color)
+        public static void PrintLine(string msg, ConsoleColor color)
         {
             ConsoleColor defaultColor = System.Console.ForegroundColor;
             System.Console.ForegroundColor = color;
             System.Console.WriteLine(msg);
             System.Console.ForegroundColor = defaultColor;
+        }
+        public static void Print(string msg, ConsoleColor color)
+        {
+            ConsoleColor defaultColor = System.Console.ForegroundColor;
+            System.Console.ForegroundColor = color;
+            System.Console.Write(msg);
+            System.Console.ForegroundColor = defaultColor;
+        }
+        public static void UpdatePrint(string msg, ConsoleColor color)
+        {
+            Print(msg, color);
+            System.Console.SetCursorPosition(0, System.Console.CursorTop);
         }
     }
 }

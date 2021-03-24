@@ -23,6 +23,7 @@ namespace RUCP.Transmitter
     {
         private Thread receive_th;
         private ServerSocket serverSocket;
+        private volatile bool work = true;
 
 
         internal SocketListener(ServerSocket server)
@@ -30,18 +31,17 @@ namespace RUCP.Transmitter
             
 
             serverSocket = server;
-            receive_th = new Thread(Listener);
+            receive_th = new Thread(Listener) { IsBackground = true };
             receive_th.Start();
         }
 
         internal void Stop()
         {
-            receive_th.Abort();
-            receive_th.Join();
+            work = false;
         }
         private void Listener()
         {
-            while (true)
+            while (work)
             {
                 try
                 {
@@ -103,18 +103,19 @@ namespace RUCP.Transmitter
                 }
                 catch (SocketException e)
                 {
-                    Debug.Log(e);
-                    serverSocket.Close();
-                }
-                catch (ThreadAbortException)
-                {
-                    return;
+                    //10054 = The remote host forcibly dropped the existing connection. 10004 = Socket close
+                    if (e.ErrorCode == 10054 || e.ErrorCode == 10004)
+                    {
+                        serverSocket.Close();
+                    }
+                    else Debug.Log($"SocketException:{e}", MsgType.ERROR);
                 }
                 catch (Exception e)
                 {
-                    Debug.Log(e);
+                    Debug.Log($"SocketListener:{e}", MsgType.ERROR);
                 }
             }
+          //  Debug.Log("Listener has completed its work");
         }
 
 

@@ -17,9 +17,10 @@ namespace RUCP.Transmitter
     internal class Resender
     {
 
-        private DelayQueue<Packet> elements = new DelayQueue<Packet>();
+        private BlockingQueue<Packet> elements = new BlockingQueue<Packet>();
         private ServerSocket serverSocket;
         private Thread thread;
+        private volatile bool work = true;
 
         internal Resender(ServerSocket serverSocket)
         {
@@ -35,18 +36,19 @@ namespace RUCP.Transmitter
 
         internal void Start()
         {
-            thread = new Thread(new ThreadStart(Run));
+            thread = new Thread(new ThreadStart(Run)) { IsBackground = true };
             thread.Start();
         }
         private void Run()
         {
             Packet packet = null;
-            while (true)
+            while (work)
             {
                 try
                 {
                     packet = elements.Take();
 
+                    if (packet == null) continue;
                     //Если первый пакеет в очереди подтвержден удаляем его из очереди и переходим к следуюещему
                     if (packet.ACK) continue;
 
@@ -65,21 +67,19 @@ namespace RUCP.Transmitter
                     Add(packet); //Запись на переотправку
 
                 }
-                catch (ThreadAbortException)
-                {
-                    return;
-                }
                 catch (Exception e)
                 {
-                    Debug.Log(e);
+                    Debug.Log($"Resender:{e}");
                 }
 
             }
+        //   Debug.Log("Resender has completed its work");
         }
 
         internal void Stop()
         {
-            thread.Abort();
+            work = false;
+            elements.isBlocking = false;
         }
     }
 }
