@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace RUCPs.Debugger
 {
-    public class Message
+    public class Note
     {
         public long Time { get; private set; }
         public string Text { get; private set; }
         public string StackTrace { get; private set; } = null;
         public MsgType Type { get; private set; }
 
-        internal Message(string text, string stackTrace = null, MsgType type = MsgType.INFO)
+        internal Note(string text, string stackTrace = null, MsgType type = MsgType.INFO)
         {
             Time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             Text = text;

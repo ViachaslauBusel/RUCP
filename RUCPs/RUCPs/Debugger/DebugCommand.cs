@@ -53,7 +53,7 @@ namespace RUCPs.Debugger
         private static void Enter()
         {
             System.Console.WriteLine("You entered log monitoring mode. To exit press q");
-            Action<Message> print = (m) => m.Print();
+            Action<Note> print = (m) => m.Print();
             Debug.log += print;
             while (true)
             {
@@ -70,14 +70,14 @@ namespace RUCPs.Debugger
         {
             int deleted = 0;
 
-                    while (count-- > 0 && Debug.Messages.TryDequeue(out Message e)) deleted++;
+                    while (count-- > 0 && Debug.Messages.TryDequeue(out Note e)) deleted++;
                     System.Console.WriteLine($"deleted {deleted} logs. available for deletion {Debug.Messages.Count}");
         }
         private static void Show(int count)
         {
 
             System.Console.WriteLine($"{Debug.Messages.Count} logs available for output");
-            foreach (Message e in Debug.Messages)
+            foreach (Note e in Debug.Messages)
             {
                 if (count-- <= 0) break;
                 e.Print();
