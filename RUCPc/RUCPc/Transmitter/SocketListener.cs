@@ -47,13 +47,15 @@ namespace RUCPc.Transmitter
                 {
                     int receiveBytes = serverSocket.Socket.ReceiveFrom(out byte[] data);
                     Packet packet = Packet.Create(data, receiveBytes);
+                   
 
                     if (packet == null) continue;
+                
 
                     switch (packet.Channel)
                     {
-
                         case Channel.Unreliable://Пакет пришол по ненадежному каналу
+                            serverSocket.ServerInfo.received++;
                             serverSocket.AddPipeline(packet);
                             break;
                         case Channel.Reliable://Пакет пришол по надежному каналу

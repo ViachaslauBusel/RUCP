@@ -19,7 +19,7 @@ namespace RUCPc
     public class ServerSocket
     {
         public static string Version => $"ver. {version.ToString("0.###")}a";
-        internal const float version = 0.005f;
+        internal const float version = 0.006f;
         internal UdpSocket Socket{ get; private set; }
         public NetworkInfo NetworkInfo { get; private set; }
         public ServerInfo ServerInfo { get; private set; }
@@ -72,7 +72,10 @@ namespace RUCPc
             for (int i = 0; i < count; i++)
             {
                 if (pipeline.TryDequeue(out Packet packet))
+                {
                     HandlersStorage.GetHandler(packet.ReadType())(packet);
+                    //Debug.Log($"Process:{packet.ReadType()}");
+                }
                 else return;
             }
         }

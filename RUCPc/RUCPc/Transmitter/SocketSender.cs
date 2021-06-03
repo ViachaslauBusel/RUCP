@@ -42,19 +42,19 @@ namespace RUCPc.Transmitter
                 case Channel.Reliable:
                     
                     server.bufferReliable.Insert(packet);
-                    server.NetworkInfo.Send++;
+                    server.NetworkInfo.SentPackets++;
                     resender.Add(packet);//Запись на переотправку при потери пакетов
                     break;
                 case Channel.Queue:
                    
                     server.bufferQueue.Insert(packet);
-                    server.NetworkInfo.Send++;
+                    server.NetworkInfo.SentPackets++;
                     resender.Add(packet);//Запись на переотправку при потери пакетов
                     break;
                 case Channel.Discard:
                    
                     server.bufferDiscard.Insert(packet);
-                    server.NetworkInfo.Send++;
+                    server.NetworkInfo.SentPackets++;
                     resender.Add(packet);//Запись на переотправку при потери пакетов
                     break;
             }

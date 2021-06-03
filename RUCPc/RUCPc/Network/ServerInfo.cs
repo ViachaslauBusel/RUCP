@@ -16,10 +16,20 @@ namespace RUCPc.Network
         /// <summary>
         /// Полученные пакеты от сервера
         /// </summary>
-        public int received = 0;
+        internal int received = 0;
         /// <summary>
         /// Количество обработанных пакетов
         /// </summary>
-        public int proccesed = 0;
+        internal int proccesed = 0;
+
+        public int AcceptedPackets
+        {
+            get => proccesed;
+        }
+        public int DroppedPackets
+        {
+            get => received - proccesed;
+        }
+
     }
 }

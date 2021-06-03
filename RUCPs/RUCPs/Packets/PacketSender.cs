@@ -43,7 +43,7 @@ namespace RUCPs.Packets
             }
             catch (BufferOverflowException e)
             {
-                Debug.Log(e);
+                Debug.Log($"Send error: {e}");
                 Client.CloseConnection();
             }
             catch (Exception e)

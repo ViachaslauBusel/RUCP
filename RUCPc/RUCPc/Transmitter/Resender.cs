@@ -61,7 +61,7 @@ namespace RUCPc.Transmitter
                     }
 
 
-                    serverSocket.NetworkInfo.Resend++;
+                    serverSocket.NetworkInfo.ResentPackets++;
                     //     Debug.Log("Переотправка пакета");
                     serverSocket.Socket.Send(packet);
                     Add(packet); //Запись на переотправку

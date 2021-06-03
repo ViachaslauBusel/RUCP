@@ -63,7 +63,10 @@ namespace RUCPs.BufferChannels
 				packet.WriteNumber((ushort)numberSent);
 				int index = numberSent % sentPackages.Length;
 				//Если пакет в буффере еще не подтвержден и требует переотправки
-				if (sentPackages[index] != null) throw new BufferOverflowException("send buffer overflow");
+				if (sentPackages[index] != null)
+				{
+					throw new BufferOverflowException("send buffer overflow");
+				}
 
 				sentPackages[index] = packet;
 

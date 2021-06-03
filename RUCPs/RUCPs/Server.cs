@@ -21,7 +21,7 @@ namespace RUCPs
     public class Server
     {
 		public static string Version => $"ver. {version.ToString("0.###")}a";
-		internal const float version = 0.005f;
+		internal const float version = 0.006f;
 		internal const float minSupportedVersion = 0.003f;
 		/***
 		 * Буфер для хранение пакетов в очереди
