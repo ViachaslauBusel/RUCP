@@ -17,69 +17,72 @@ namespace RUCPc.Transmitter
     internal class Resender
     {
 
-        private BlockingQueue<Packet> elements = new BlockingQueue<Packet>();
-        private ServerSocket serverSocket;
-        private Thread thread;
-        private volatile bool work = true;
+        private BlockingQueue<Packet> m_elements = new BlockingQueue<Packet>();
+        private Client m_serverSocket;
+        private Thread m_thread;
+        private volatile bool m_work = true;
 
-        internal Resender(ServerSocket serverSocket)
+        internal Resender(Client serverSocket)
         {
-            this.serverSocket = serverSocket;
+            this.m_serverSocket = serverSocket;
         }
 
         internal void Add(Packet packet)
         {
-            packet.WriteSendTime(serverSocket.NetworkInfo.GetTimeout());
+            int timeout = m_serverSocket.NetworkInfo.GetTimeoutInterval();
+            packet.WriteSendTime(timeout);
+         //   Debug.Log($"Время следующей отправки пакета:{packet.ReadNumber()} через:{timeout}");
    
-            elements.Add(packet);
+            m_elements.Add(packet);
         }
 
         internal void Start()
         {
-            thread = new Thread(new ThreadStart(Run)) { IsBackground = true };
-            thread.Start();
+            m_thread = new Thread(new ThreadStart(Run)) { IsBackground = true };
+            m_thread.Start();
         }
         private void Run()
         {
             Packet packet = null;
-            while (work)
+            while (m_work)
             {
                 try
                 {
-                    packet = elements.Take();
+                    packet = m_elements.Take();
+                   
 
                     if (packet == null) continue;
                     //Если первый пакеет в очереди подтвержден удаляем его из очереди и переходим к следуюещему
                     if (packet.ACK) continue;
 
-                    //Если количество попыток переотправки пакета превышает 16, отключаем клиента
-                    if (packet.SendCicle > 40)
+                    //Если время ожидания подтверждения получения пакета сервером превышает 6 сек, отключаемся от сервера
+                    if (packet.CalculatePing() > 6000)
                     {
                         Debug.Log($"Lost connection, remote node does not respond for: {packet.CalculatePing()}ms", MsgType.ERROR);
-                        serverSocket.Close();
+                        m_serverSocket.Close();
                         continue;
                     }
 
 
-                    serverSocket.NetworkInfo.ResentPackets++;
-                    //     Debug.Log("Переотправка пакета");
-                    serverSocket.Socket.Send(packet);
+                    m_serverSocket.NetworkInfo.ResentPackets++;
+                     //    Debug.Log($"Переотправка пакета:{packet.ReadNumber()}, time:{packet.CalculatePing()}");
+                    m_serverSocket.Socket?.Send(packet);
                     Add(packet); //Запись на переотправку
 
                 }
                 catch (Exception e)
                 {
-                    Debug.Log($"Resender:{e}");
+                    Debug.Log($"Resender:{e}", MsgType.ERROR);
                 }
 
             }
-        //   Debug.Log("Resender has completed its work");
+            //   Debug.Log("Resender has completed its work");
         }
 
         internal void Stop()
         {
-            work = false;
-            elements.isBlocking = false;
+            m_work = false;
+            m_elements.isBlocking = false;
         }
     }
 }

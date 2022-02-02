@@ -22,11 +22,11 @@ namespace RUCPc.Transmitter
     internal class SocketListener
     {
         private Thread receive_th;
-        private ServerSocket serverSocket;
+        private Client serverSocket;
         private volatile bool work = true;
 
 
-        internal SocketListener(ServerSocket server)
+        internal SocketListener(Client server)
         {
             
 
@@ -78,23 +78,23 @@ namespace RUCPc.Transmitter
 
 
                         case Channel.ReliableACK://Confirmation of acceptance of the package by the other side
-                            serverSocket.NetworkInfo.SetPing(
-                                  serverSocket.bufferReliable.ConfirmAsk(packet.ReadNumber()));
+                            if (serverSocket.bufferReliable.ConfirmAsk(packet.ReadNumber(), out int ping_r))
+                            { serverSocket.NetworkInfo.SetPing(ping_r); }
                             break;
                         case Channel.QueueACK://Confirmation of acceptance of the package by the other side
-                            serverSocket.NetworkInfo.SetPing(
-                                  serverSocket.bufferQueue.ConfirmAsk(packet.ReadNumber()));
+                            if (serverSocket.bufferQueue.ConfirmAsk(packet.ReadNumber(), out int ping_q))
+                            { serverSocket.NetworkInfo.SetPing(ping_q); }
                             break;
                         case Channel.DiscardACK://Confirmation of acceptance of the package by the other side
-                            serverSocket.NetworkInfo.SetPing(
-                            serverSocket.bufferDiscard.ConfirmAsk(packet.ReadNumber()));
+                            if (serverSocket.bufferDiscard.ConfirmAsk(packet.ReadNumber(), out int ping_d))
+                            { serverSocket.NetworkInfo.SetPing(ping_d); }
                             break;
 
 
                         case Channel.Connection://Confirmation of connection
                             serverSocket.CryptographerRSA.Decrypt(packet);
                             serverSocket.CryptographerAES.SetKey(packet);
-                            serverSocket.socketConnector.OpenConnection();
+                            serverSocket.m_socketConnector.OpenConnection();
                             break;
                         case Channel.Disconnect:
                             Debug.Log("The server has decided to disconnect you");
@@ -108,7 +108,7 @@ namespace RUCPc.Transmitter
                     //10054 = The remote host forcibly dropped the existing connection. 10004 = Socket close
                     if (e.ErrorCode == 10054 || e.ErrorCode == 10004)
                     {
-                        serverSocket.Close();
+                        serverSocket.TechnicalClose();
                     }
                     else Debug.Log($"SocketException:{e}", MsgType.ERROR);
                 }

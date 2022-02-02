@@ -39,15 +39,15 @@ namespace RUCPc.BufferChannels
 					{
 						receivedPackages[index] = pack;
 						//Discard >>
-						int compare = NumberUtils.UshortCompare(numberPacket, numberReceived);
+						int compare = NumberUtils.UshortCompare(numberPacket, m_nextExpectedSequenceNumber);
 						if (compare >= 0)// Пакет пришел первым
 						{
-							numberReceived = numberPacket;
+							m_nextExpectedSequenceNumber = numberPacket;
 						}
 						// Пакет пришел не первым, ищем пакеты с таким же типом, если они есть, отбрасываем этот пакет
 						else 
 						{
-							for (int x = (numberPacket + 1) % numberingWindowSize; NumberUtils.UshortCompare(x, numberReceived) <= 0; x = (x+1)%numberingWindowSize)//Перебор пакетов пришедших после
+							for (int x = (numberPacket + 1) % numberingWindowSize; NumberUtils.UshortCompare(x, m_nextExpectedSequenceNumber) <= 0; x = (x+1)%numberingWindowSize)//Перебор пакетов пришедших после
 							{
 								Packet pack_rc = receivedPackages[x % receivedPackages.Length];
 							if (pack_rc == null) continue;

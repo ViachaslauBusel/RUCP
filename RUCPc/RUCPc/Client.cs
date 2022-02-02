@@ -16,20 +16,20 @@ using System.Net;
 
 namespace RUCPc
 {
-    public class ServerSocket
+    public class Client
     {
         public static string Version => $"ver. {version.ToString("0.###")}a";
-        internal const float version = 0.006f;
+        internal const float version = 0.007f;
         internal UdpSocket Socket{ get; private set; }
         public NetworkInfo NetworkInfo { get; private set; }
         public ServerInfo ServerInfo { get; private set; }
         public NetworkStatus NetworkStatus { get; internal set; } = NetworkStatus.CLOSED;
 
-        internal SocketConnector socketConnector;
-        private SocketSender socketSender;
-        private SocketListener socketListener;
+        internal SocketConnector m_socketConnector;
+        private SocketSender m_socketSender;
+        private SocketListener m_socketListener;
 
-        private ConcurrentQueue<Packet> pipeline = new ConcurrentQueue<Packet>();
+        private ConcurrentQueue<Packet> m_pipeline = new ConcurrentQueue<Packet>();
 
         internal BufferReliable bufferReliable { get; private set; }
         internal BufferQueue bufferQueue { get; private set; }
@@ -44,7 +44,7 @@ namespace RUCPc
 
         internal object lockStatus = new object();
 
-        public ServerSocket(string address, int port)
+        public Client(string address, int port)
         {
             //Get the data required for the connection
             //remote IP address
@@ -64,14 +64,17 @@ namespace RUCPc
         {
             if (packet.Encrypt) CryptographerAES.Decrypt(packet);
             ServerInfo.proccesed++;
-                pipeline.Enqueue(packet);
+                m_pipeline.Enqueue(packet);
         }
-
+        /// <summary>
+        /// Обработать указанное количество пакетов(count) из очереди принятых пакетов
+        /// </summary>
+        /// <param name="count"></param>
         public void ProcessPacket(int count)
         {
             for (int i = 0; i < count; i++)
             {
-                if (pipeline.TryDequeue(out Packet packet))
+                if (m_pipeline.TryDequeue(out Packet packet))
                 {
                     HandlersStorage.GetHandler(packet.ReadType())(packet);
                     //Debug.Log($"Process:{packet.ReadType()}");
@@ -103,11 +106,11 @@ namespace RUCPc
                     bufferQueue = new BufferQueue(this, 500);
                     bufferDiscard = new BufferDiscard(500);
 
-                    socketConnector = new SocketConnector(this);
+                    m_socketConnector = new SocketConnector(this);
                     //Create an object for sending packets
-                    socketSender = new SocketSender(this);
+                    m_socketSender = new SocketSender(this);
                     //Start the listener stream to receive packets
-                    socketListener = new SocketListener(this);
+                    m_socketListener = new SocketListener(this);
 
 
                     CryptographerRSA = new RSA();
@@ -116,7 +119,7 @@ namespace RUCPc
                     if (publicRSAKey != null)
                         CryptographerRSA.SetPublicKey(publicRSAKey.Modulus, publicRSAKey.Exponent);
 
-                    socketConnector.Connect();
+                    m_socketConnector.Connect();
 
                 }
             }
@@ -128,41 +131,43 @@ namespace RUCPc
             try
             {
                 Packet packet = Packet.Create(Channel.Disconnect);
-                socketSender?.Send(packet);
-                lock (lockStatus)
-                {
+                m_socketSender?.Send(packet);
 
-                    socketSender?.Stop();
-                    socketSender = null;
-
-                    socketConnector = null;
-
-                    Socket?.Close();
-                    Socket = null;
-
-                    CryptographerRSA?.Dispose();
-                    CryptographerRSA = null;
-                    CryptographerAES?.Dispose();
-                    CryptographerAES = null;
-
-                    publicRSAKey = null;
-
-                    socketListener?.Stop();
-                    socketListener = null;
-
-                   
-                    Debug.Log("Close connection");
-                }
+                TechnicalClose();
             }
             catch (Exception e){ Debug.Log($"Failed to successfully close the connection:{e}", MsgType.ERROR); }
-            finally
-            {
-                NetworkStatus = NetworkStatus.CLOSED;
-            }
         }
 
+        internal void TechnicalClose()
+        {
+            lock (lockStatus)
+            {
+                if (NetworkStatus != NetworkStatus.CLOSED)
+                {
+                    NetworkStatus = NetworkStatus.CLOSED;
+                    Debug.Log("Connection closed");
+                }
 
 
+                m_socketSender?.Stop();
+                m_socketSender = null;
+
+                m_socketConnector = null;
+
+                Socket?.Close();
+                Socket = null;
+
+                CryptographerRSA?.Dispose();
+                CryptographerRSA = null;
+                CryptographerAES?.Dispose();
+                CryptographerAES = null;
+
+                publicRSAKey = null;
+
+                m_socketListener?.Stop();
+                m_socketListener = null;
+            }
+        }
 
         public bool IsConnected()
         {
@@ -176,7 +181,7 @@ namespace RUCPc
         {
             try
             {
-                socketSender?.Send(packet);
+                m_socketSender?.Send(packet);
             }
             catch { }
         }

@@ -20,9 +20,9 @@ namespace RUCPs
 {
     public class Server
     {
-		public static string Version => $"ver. {version.ToString("0.###")}a";
-		internal const float version = 0.006f;
-		internal const float minSupportedVersion = 0.003f;
+		public static string Version => $"ver. {VERSION.ToString("0.###")}a";
+		internal const float VERSION = 0.007f;
+		internal const float MIN_SUPPORTED_VERSION = 0.003f;
 		/***
 		 * Буфер для хранение пакетов в очереди
 		 */
@@ -33,7 +33,10 @@ namespace RUCPs
 		private volatile int processPackets = 0;
 		private volatile int completedPackets = 0;
 		//	private HandlerThread[] pool_handler;
+		/// <summary> Throwing exceptions received in the server</summary>
+		public static event Action<Exception> throwingExceptions;
 
+		internal static void CallException(Exception e) { throwingExceptions?.Invoke(e); }
 
 		public static void SetHandler(Func<IProfile> han)
 		{
@@ -78,7 +81,7 @@ namespace RUCPs
 			catch (Exception e)
 			{
 				System.Console.WriteLine("Failed to start server");
-				Debug.Log(e);
+				CallException(e);
 			}
 		}
 
@@ -127,11 +130,11 @@ namespace RUCPs
 					break;
 					if (e.ErrorCode == 10054)
 						continue;
-					Debug.Log(e);
+					CallException(e);
 				}
 				catch (Exception e)
 				{
-					Debug.Log(e);
+					CallException(e);
 				}
 			}
 

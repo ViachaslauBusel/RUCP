@@ -44,7 +44,11 @@ namespace RUCPc.Packets
             WriteValue(&value, 8);
         }
 
-       unsafe public  void WriteShort(short value)
+        unsafe public  void WriteShort(short value)
+        {
+            WriteValue(&value, 2);
+        }
+        unsafe public void WriteUshort(ushort value)
         {
             WriteValue(&value, 2);
         }

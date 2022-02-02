@@ -19,12 +19,12 @@ namespace RUCPs.Packets
 
                 if (Client == null)
                 {
-                  Debug.Log("Error in Sender: client == null", MsgType.ERROR);
+                    Server.CallException(new Exception("The packet cannot be sent, the client is not specified"));
                     return;
                 }
-                if (sendCicle != 0)
+                if (m_sendCicle != 0)
                 {
-                    Debug.Log("Package is blocked, sending is not possible", MsgType.ERROR);
+                    Server.CallException(new Exception("Packet is blocked, sending is not possible"));
                     return;
                 }
 
@@ -43,12 +43,12 @@ namespace RUCPs.Packets
             }
             catch (BufferOverflowException e)
             {
-                Debug.Log($"Send error: {e}");
+                Server.CallException(e);
                 Client.CloseConnection();
             }
             catch (Exception e)
             {
-                Debug.Log(e);
+                Server.CallException(e);
             }
         }
 

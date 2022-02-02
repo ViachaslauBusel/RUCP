@@ -19,13 +19,10 @@ namespace RUCPc.Packets
 
 		private Packet(int channel)
 		{
-			Data = new byte[1500];
+			Data = new byte[DATA_SIZE];
 			Data[0] = (byte)channel;
-			Length = index = headerLength;
+			Length = index = HEADER_SIZE;
 		}
-
-		public static Packet Create(Packet copy_packet) => new Packet(copy_packet);
-
 		private Packet(Packet copy_packet)
 		{
 			Data = new byte[copy_packet.Length];
@@ -34,12 +31,6 @@ namespace RUCPc.Packets
 			index = copy_packet.index;
 			Length = copy_packet.Length;
 		}
-
-		internal static Packet Create(byte[] data, int bytesReceived)
-		{
-			if (data == null || data.Length < Packet.headerLength) return null;
-		 return	new Packet(data, bytesReceived);
-		}
 		private Packet(byte[] data, int bytesReceived)
 		{
 			sendCicle = 1;
@@ -47,7 +38,17 @@ namespace RUCPc.Packets
 			//Получаем данные
 			Length = bytesReceived;
 
-			index = headerLength;
+			index = HEADER_SIZE;
 		}
+
+		public static Packet Create(Packet copy_packet) => new Packet(copy_packet);
+
+	
+		internal static Packet Create(byte[] data, int bytesReceived)
+		{
+			if (data == null || data.Length < Packet.HEADER_SIZE) return null;
+		 return	new Packet(data, bytesReceived);
+		}
+		
 	}
 }

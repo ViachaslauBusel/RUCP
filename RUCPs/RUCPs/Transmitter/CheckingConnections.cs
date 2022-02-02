@@ -76,7 +76,7 @@ namespace RUCPs.Transmitter
                 }
                 catch (Exception e)
                 {
-                    Debug.Log(e);
+                    Server.CallException(e);
                 }
             }
         }

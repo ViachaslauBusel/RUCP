@@ -18,11 +18,11 @@ namespace RUCPc.Transmitter
     internal class SocketSender
     {
 
-        protected ServerSocket server;
+        protected Client server;
         private Resender resender;
 
 
-        internal SocketSender(ServerSocket server)
+        internal SocketSender(Client server)
         {
             this.server = server;
             resender = new Resender(this.server);
@@ -59,7 +59,7 @@ namespace RUCPc.Transmitter
                     break;
             }
             //Отпровляем пакет
-                server.Socket.Send(packet);
+                server.Socket?.Send(packet);
         }
 
         internal void Stop()

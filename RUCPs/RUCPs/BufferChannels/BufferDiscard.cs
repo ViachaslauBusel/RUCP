@@ -31,34 +31,34 @@ namespace RUCPs.BufferChannels
 			try
 			{
 
-				int numberPacket = packet.ReadNumber();//Порядковый номер принятого пакета
-				int index = numberPacket % receivedPackages.Length;//Порядковый номер в буфере
+				int packetNumber = packet.ReadNumber();//Порядковый номер принятого пакета
+				int bufferIndex = packetNumber % receivedPackages.Length;//Порядковый номер в буфере
 
 
 				lock (receivedPackages)
 				{
 					//Если пакет еще не был принят
-					if (receivedPackages[index] == null
-							// Если принятый пакет был отправлен после чем пакет записанный в буффер
-							|| NumberUtils.UshortCompare(numberPacket, receivedPackages[index].ReadNumber()) > 0)
+					if (receivedPackages[bufferIndex] == null
+							// Или если принятый пакет был отправлен после чем пакет записанный в буффер
+							|| NumberUtils.UshortCompare(packetNumber, receivedPackages[bufferIndex].ReadNumber()) > 0)
 					{
-						receivedPackages[index]?.Dispose();
-						receivedPackages[index] = packet;
+						receivedPackages[bufferIndex]?.Dispose();
+						receivedPackages[bufferIndex] = packet;
 						//Discard >>
-						int compare = NumberUtils.UshortCompare(numberPacket, numberReceived);
+						int compare = NumberUtils.UshortCompare(packetNumber, m_nextExpectedSequenceNumber);
 						if (compare >= 0)// Пакет пришел первым
 						{
-							numberReceived = numberPacket;
+							m_nextExpectedSequenceNumber = packetNumber;
 						}
 						// Пакет пришел не первым, ищем пакеты с таким же типом, если они есть, отбрасываем этот пакет
 						else
 						{
-							for (int x =(numberPacket + 1) % numberingWindowSize; NumberUtils.UshortCompare(x, numberReceived) <= 0; x=(x+1)%numberingWindowSize)//Перебор пакетов пришедших после
+							for (int x =(packetNumber + 1) % NUMBERING_WINDOW_SIZE; NumberUtils.UshortCompare(x, m_nextExpectedSequenceNumber) <= 0; x=(x+1)%NUMBERING_WINDOW_SIZE)//Перебор пакетов пришедших после
 							{
 								Packet pack_rc = receivedPackages[x % receivedPackages.Length];
 								if (pack_rc == null) continue;
 								//Если пакет совпадает по типу и был отправлен после этого пакета
-								if (packet.ReadType() == pack_rc.ReadType() && NumberUtils.UshortCompare(pack_rc.ReadNumber(), numberPacket) > 0)
+								if (packet.ReadType() == pack_rc.ReadType() && NumberUtils.UshortCompare(pack_rc.ReadNumber(), packetNumber) > 0)
 								{ return; }
 							}
 						}
@@ -69,7 +69,7 @@ namespace RUCPs.BufferChannels
 			}
 			catch (Exception e)
 			{
-				Debug.Log(e);
+				Server.CallException(e);
 			}
 		}
 	}

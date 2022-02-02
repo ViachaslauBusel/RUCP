@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace RUCPs.Console
 {
-    public class Command
+    public class Command : ICommand
     {
         public string Name { get; private set; }
         public string Description { get; private set; }
@@ -25,9 +25,10 @@ namespace RUCPs.Console
             this.action = action;
         }
 
-        internal void Invoke(Queue<string> command)
+        void ICommand.Process(Queue<string> command)
         {
             action?.Invoke(command);
         }
+
     }
 }

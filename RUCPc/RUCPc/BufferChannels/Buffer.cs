@@ -24,7 +24,7 @@ namespace RUCPc.BufferChannels
         //Порядковый номер отправляемого пакета
         protected volatile int numberSent = 0;
         //Ожидаемый порядковый номер получаемого пакета
-        protected volatile int numberReceived = 0;
+        protected volatile int m_nextExpectedSequenceNumber = 0;
 
 
         public Buffer(int size)
@@ -53,11 +53,11 @@ namespace RUCPc.BufferChannels
         }
 
         /// <summary>
-		/// Подтверждение о принятии пакета клиентом
+		/// Подтверждение о принятии пакета клиентом, возвращает true если пакет еще не был подтвержден
 		/// </summary>
-		public int ConfirmAsk(int number)
+		public bool ConfirmAsk(int number, out int ping)
         {
-            int ping = 0;
+          
             lock (sentPackages)
             {
                 int index = number % sentPackages.Length;
@@ -66,10 +66,11 @@ namespace RUCPc.BufferChannels
                     sentPackages[index].ACK = true;
                     ping = (int)sentPackages[index].CalculatePing();
                     sentPackages[index] = null;
-
+                    return true;
                 }
             }
-            return ping;
+            ping = 0;
+            return false;
         }
     }
 }

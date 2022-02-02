@@ -45,33 +45,41 @@ namespace RUCPs
 				
 				ClientSocket client = packet.BindClient();  //Получаем оброботчик(Сокет) конкретного клиента
 
-				if (!client.isConnected() && packet.isChannel(Channel.Connection))
+				//Если связь с клиентом не установлена 
+				if (!client.isConnected())
 				{
-					if (packet.Encrypt)
-						client.CryptographerRSA.Decrypt(packet);
-					float versionClient = packet.ReadFloat();
-					if (versionClient < Server.minSupportedVersion) { client.CloseConnection(); return; }
-
-					if (ClientList.AddClient(client.ID, client))
+					//и клиент хочет ее установить
+					if (packet.isChannel(Channel.Connection))
 					{
+						if (packet.Encrypt)
+							client.CryptographerRSA.Decrypt(packet);
+						float versionClient = packet.ReadFloat();
+						if (versionClient < Server.MIN_SUPPORTED_VERSION) { client.CloseConnection(); return; }
 
-						client.OpenConnection();//If the connection was successful
+						if (ClientList.AddClient(client.ID, client))
+						{
 
-						CheckingConnections.InsertClient(client);//Вставка клиента в очередь проверки соеденение
+							client.OpenConnection();//If the connection was successful
+
+							CheckingConnections.InsertClient(client);//Вставка клиента в очередь проверки соеденение
 
 
 
-						client.CryptographerRSA.SetPublicKey(packet);
+							client.CryptographerRSA.SetPublicKey(packet);
 
-						//отпровляем подтверждение клиенту
-						Packet confirmPacket = Packet.Create(client, Channel.Connection);
-						client.CryptographerAES.WriteKey(confirmPacket);
-						client.CryptographerRSA.Encrypt(confirmPacket);
-						confirmPacket.Send();
+							//отпровляем подтверждение клиенту
+							Packet confirmPacket = Packet.Create(client, Channel.Connection);
+							client.CryptographerAES.WriteKey(confirmPacket);
+							client.CryptographerRSA.Encrypt(confirmPacket);
+							confirmPacket.Send();
 
+						}
+						return;
 					}
-					return;
-				
+                    else//Если получен пакет без установленной связи, отправить этому клиенту команду на отключения
+                    {
+						client.Disconnect();
+					}
 				}
 				
 				//Package processing
@@ -124,7 +132,7 @@ namespace RUCPs
 			}
 			catch (Exception e)
 			{
-					Debug.Log(e);
+				Server.CallException(e);
 			}
 		//	}
 

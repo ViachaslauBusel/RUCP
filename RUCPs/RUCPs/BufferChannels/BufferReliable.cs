@@ -4,7 +4,7 @@
  * All rights reserved. */
 
 using RUCPs.Tools;
-using RUCPs.Debugger;
+using RUCPs.Logger;
 using System;
 using System.Collections.Generic;
 using System.Text;

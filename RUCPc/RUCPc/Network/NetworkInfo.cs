@@ -13,6 +13,10 @@ namespace RUCPc.Network
 {
     public class NetworkInfo
     {
+        /// <summary>Среднее время колебаний задержек между отправкой пакета и получении подтверждения об доставке пакета</summary>
+        private int m_devRTT = 0;
+        /// <summary>Среднее значение времени задержек между отправкой пакета и получении подтверждения об доставке пакета</summary>
+        private int m_estimatedRTT = 500;
         private int sentPackets = 0;
         private int resentPackets = 0;
         private int pl_sentPackets = 0;
@@ -35,6 +39,8 @@ namespace RUCPc.Network
                 }
             }
         }
+
+
         /// <summary>
         /// Количество повторно отправленных пакетов
         /// </summary>
@@ -48,14 +54,7 @@ namespace RUCPc.Network
                 counter = 0;
             }
         }
-        /// <summary>
-        /// Среднее значение времени задержек между отправкой пакета и получении подтверждения об доставке пакета
-        /// </summary>
-        public int Ping { get; internal set; } = 500;
-        /// <summary>
-        /// Среднее значение разности времени задержек между отправкой пакета и получении подтверждения об доставке пакета
-        /// </summary>
-        public int RTT { get; internal set; } = 0;
+
         /// <summary>
         /// Packet loss percentage
         /// </summary>
@@ -71,13 +70,19 @@ namespace RUCPc.Network
         /// <summary>
         /// Время до повторной отправки пакета при патери пакетов
         /// </summary>
-        public int GetTimeout() => Ping + 3 * ((RTT < 4) ? 4 : RTT);
+        public int GetTimeoutInterval() => m_estimatedRTT + 3 * ((m_devRTT < 4) ? 4 : m_devRTT);
 
+        public int Ping => m_estimatedRTT;
+        internal void InitPing(int ping)
+        {
+            m_devRTT = 0;
+            m_estimatedRTT = ping;
+        }
 
         internal void SetPing(int ping)
         {
-            RTT = (int)(RTT * 0.75 + Math.Abs(ping - Ping) * 0.25);
-            Ping = (int)(Ping * 0.875 + ping * 0.125);
+            m_devRTT = (int)(m_devRTT * 0.75 + Math.Abs(ping - m_estimatedRTT) * 0.25);
+            m_estimatedRTT = (int)(m_estimatedRTT * 0.875 + ping * 0.125);
         }
     }
 }

@@ -36,13 +36,13 @@ namespace RUCPc.Cryptography
             if (encryptor == null) return;
             try
             {
-                byte[] data = new byte[packet.Length - Packet.headerLength];
+                byte[] data = new byte[packet.Length - Packet.HEADER_SIZE];
 
-                Array.Copy(packet.Data, Packet.headerLength, data, 0, data.Length);
+                Array.Copy(packet.Data, Packet.HEADER_SIZE, data, 0, data.Length);
                 byte[] buffer = encryptor.Encrypt(data, false);
 
-                Array.Copy(buffer, 0, packet.Data, Packet.headerLength, buffer.Length);
-                packet.Length = Packet.headerLength + buffer.Length;
+                Array.Copy(buffer, 0, packet.Data, Packet.HEADER_SIZE, buffer.Length);
+                packet.Length = Packet.HEADER_SIZE + buffer.Length;
                 packet.Encrypt = true;
             }
             catch (Exception e)
@@ -52,11 +52,11 @@ namespace RUCPc.Cryptography
         }
         internal void Decrypt(Packet packet)
         {
-            byte[] data = new byte[packet.Length - Packet.headerLength];
-            Array.Copy(packet.Data, Packet.headerLength, data, 0, data.Length);
+            byte[] data = new byte[packet.Length - Packet.HEADER_SIZE];
+            Array.Copy(packet.Data, Packet.HEADER_SIZE, data, 0, data.Length);
             byte[] buffer = decryptor.Decrypt(data, RSAEncryptionPadding.OaepSHA1);
-            Array.Copy(buffer, 0, packet.Data, Packet.headerLength, buffer.Length);
-            packet.Length = Packet.headerLength + buffer.Length;
+            Array.Copy(buffer, 0, packet.Data, Packet.HEADER_SIZE, buffer.Length);
+            packet.Length = Packet.HEADER_SIZE + buffer.Length;
         }
         internal void Dispose()
         {

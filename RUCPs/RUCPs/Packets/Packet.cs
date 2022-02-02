@@ -16,18 +16,23 @@ namespace RUCPs.Packets
     {
 		/// <summary>
 		/// Длина заголовка пакета
+		/// 1 байт - 1 бит флаг зашифровано ли содержимое пакета. Остальные байты канал пакета
+		/// 2-3 байт - Тип пакета
+		/// 4-5 байт - Порядковый номер пакета
 		/// </summary>
-		internal const int headerLength = 5;	
-		
+		internal const int HEADER_SIZE = 5;
+
+		private volatile int m_sendCicle = 0;
+		private volatile bool m_ack = false;
+
 		internal long SendTime { get; private set; } = 0;//Время отправки
 		public long ResendTime { get; private set; } = 0;//Время повторной отправки пакета при неудачной попытке доставки
 
-		private volatile int sendCicle = 0;
-		internal int SendCicle => sendCicle;//При отправке или получении пакета, пакет блокируется для невозможности повторной отправки
-		public bool isBlock => SendCicle != 0;
+	
+		public bool isBlock => m_sendCicle != 0;
 
-		private volatile bool ack = false;
-		internal bool ACK { get => ack; set { ack = value; } }
+		
+		internal bool ACK { get => m_ack; set { m_ack = value; } }
 
 		public ClientSocket Client { get; private set; }
 		internal IPEndPoint address;
@@ -38,12 +43,12 @@ namespace RUCPs.Packets
 		/// </summary>
 		internal void WriteSendTime()
 		{
-			if (sendCicle++ == 0) SendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.GetTimeout();
+			if (m_sendCicle++ == 0) SendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			ResendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.GetTimeoutInterval();
 		}
-		internal void CalculatePing()
+		internal int CalculatePing()
 		{
-		 	Client.Ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - SendTime);
+		 	return (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - SendTime);
 		}
 
 

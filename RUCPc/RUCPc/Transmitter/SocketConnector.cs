@@ -12,11 +12,11 @@ namespace RUCPc.Transmitter
 {
     internal class SocketConnector
     {
-        protected ServerSocket server;
+        protected Client server;
         private long firstPing;
 
 
-        internal SocketConnector(ServerSocket server)
+        internal SocketConnector(Client server)
         {
             this.server = server;
         }
@@ -36,7 +36,7 @@ namespace RUCPc.Transmitter
         private void Connector()
         {
             Packet packet = Packet.Create(Channel.Connection);
-            packet.WriteFloat(ServerSocket.version);
+            packet.WriteFloat(Client.version);
             server.CryptographerRSA.WritePublicKey(packet);
             server.CryptographerRSA.Encrypt(packet);
 
@@ -65,7 +65,7 @@ namespace RUCPc.Transmitter
                 if (server.NetworkStatus == NetworkStatus.LISTENING)
                 {
                     server.NetworkStatus = NetworkStatus.СONNECTED;
-                    server.NetworkInfo.Ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - firstPing);
+                    server.NetworkInfo.InitPing((int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - firstPing));
                   //  Debug.Log($"first ping:{server.NetworkInfo.Ping}");
                 }
             }

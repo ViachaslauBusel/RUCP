@@ -15,16 +15,16 @@ namespace RUCPc.Transmitter
 {
     internal class UdpSocket
     {
-        private IPEndPoint remotePoint;
-        private UdpClient udpClient;
-        private ServerSocket server;
+        private IPEndPoint m_remotePoint;
+        private UdpClient m_udpClient;
+        private Client server;
 
-        internal UdpSocket(IPEndPoint remoteAdress, ServerSocket serverSocket)
+        internal UdpSocket(IPEndPoint remoteAdress, Client serverSocket)
         {
             server = serverSocket;
-            udpClient = new UdpClient(0);
-            remotePoint = remoteAdress;
-            udpClient.Connect(remotePoint);
+            m_udpClient = new UdpClient(0);
+            m_remotePoint = remoteAdress;
+            m_udpClient.Connect(m_remotePoint);
         }
 
         internal void Send(Packet packet)
@@ -35,24 +35,29 @@ namespace RUCPc.Transmitter
         {
             try
             {
-                udpClient.Send(data, size);
+                m_udpClient.Send(data, size);
             }
-            catch (SocketException e)
+            //При возникновении ошибок при отправке пакетов, немедленно отключить от сервера
+            catch (Exception e)
             {
-                Debug.Log(e);
+              //  Debug.Log($"UdpSocket:{e}", MsgType.ERROR);
+                server.TechnicalClose();
+                ////Если клиент потерял связь с сервером, выполнить повторное соединение
+                //if (!m_udpClient.Client.Connected)
+                //{ m_udpClient.Connect(m_remotePoint); }
             }
         }
 
         internal int ReceiveFrom(out byte[] data)
         {
             IPEndPoint iPEnd = null;
-            data = udpClient.Receive(ref iPEnd);
+            data = m_udpClient.Receive(ref iPEnd);
             return data.Length;
         }
 
         internal void Close()
         {
-            udpClient.Close();
+            m_udpClient.Close();
         }
 
         

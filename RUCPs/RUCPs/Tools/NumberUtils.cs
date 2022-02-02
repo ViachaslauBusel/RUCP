@@ -14,6 +14,9 @@ namespace RUCPs.Tools
         /// <summary>
         /// Возвращает -1 если X < Y, 0 если X == Y, если X > Y возвращает 1
         /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <returns></returns>
         public static int UshortCompare(int x, int y)
         {
             if (x > y)

@@ -30,6 +30,12 @@ namespace RUCPs.Packets
             index += 2;
             return ret;
         }
+        public ushort ReadUshort()
+        {
+            ushort ret = BitConverter.ToUInt16(Data, index);
+            index += 2;
+            return ret;
+        }
 
         public byte[] ReadBytes()
         {

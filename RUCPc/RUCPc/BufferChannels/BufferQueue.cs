@@ -13,8 +13,8 @@ namespace RUCPc.BufferChannels
 {
     class BufferQueue:Buffer
     {
-		private ServerSocket server;
-		public BufferQueue(ServerSocket server, int size) : base(size) 
+		private Client server;
+		public BufferQueue(Client server, int size) : base(size) 
 		{
 			this.server = server;
 		}
@@ -51,9 +51,9 @@ namespace RUCPc.BufferChannels
 		private bool ConfirmPacket(int number)
 		{
 																		//	int compare = NumberUtils.ShortCompare(number, comingNumber);
-			if (number == numberReceived)// Пакет пришел в нужном порядке
+			if (number == m_nextExpectedSequenceNumber)// Пакет пришел в нужном порядке
 			{
-				numberReceived = (numberReceived + 1) % numberingWindowSize;
+				m_nextExpectedSequenceNumber = (m_nextExpectedSequenceNumber + 1) % numberingWindowSize;
 
 				return true;
 			}

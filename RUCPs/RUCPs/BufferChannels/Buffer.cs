@@ -16,7 +16,7 @@ namespace RUCPs.BufferChannels
 		/// <summary>
 		/// размер окна нумерации пакетов
 		/// </summary>
-		protected static readonly int numberingWindowSize = 65_000;
+		protected const int NUMBERING_WINDOW_SIZE = 65_000;
 
 		//Буффер для хранения полеченных пакетов
 		protected Packet[] receivedPackages;
@@ -24,10 +24,9 @@ namespace RUCPs.BufferChannels
         protected Packet[] sentPackages;
         //Порядковый номер отправляемого пакета
         protected volatile int numberSent = 0;
-		/// <summary>
-		/// Ожидаемый порядковый номер получаемого пакета
-		/// </summary>
-		protected volatile int numberReceived = 0;
+		/// <summary>Ожидаемый порядковый номер получаемого пакета</summary>
+		protected volatile int m_nextExpectedSequenceNumber = 0;
+		protected volatile int m_lastPrecessedSequenceNumber = 0;
 
 
         internal Buffer(int size)
@@ -48,7 +47,7 @@ namespace RUCPs.BufferChannels
 				if (sentPackages[index] != null && sentPackages[index].ReadNumber() == number)
 				{
 					sentPackages[index].ACK = true;
-					sentPackages[index].CalculatePing();
+					sentPackages[index].Client.Ping = sentPackages[index].CalculatePing();
 					sentPackages[index] = null;
 				}
 			}
@@ -70,7 +69,7 @@ namespace RUCPs.BufferChannels
 
 				sentPackages[index] = packet;
 
-				numberSent = (numberSent + 1) % numberingWindowSize;
+				numberSent = (numberSent + 1) % NUMBERING_WINDOW_SIZE;
 			}
 		}
 

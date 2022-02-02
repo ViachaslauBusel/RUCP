@@ -4,7 +4,7 @@
  * All rights reserved. */
 
 using RUCPs.Client;
-using RUCPs.Debugger;
+using RUCPs.Logger;
 using RUCPs.Packets;
 using RUCPs.Tools;
 using System;
@@ -58,9 +58,9 @@ namespace RUCPs.BufferChannels
 		{
 
 																		//	int compare = NumberUtils.ShortCompare(number, comingNumber);
-			if (number == numberReceived)// Пакет пришел в нужном порядке
+			if (number == m_nextExpectedSequenceNumber)// Пакет пришел в нужном порядке
 			{
-				numberReceived = (numberReceived + 1) % numberingWindowSize;
+				m_nextExpectedSequenceNumber = (m_nextExpectedSequenceNumber + 1) % NUMBERING_WINDOW_SIZE;
 
 				return true;
 			}

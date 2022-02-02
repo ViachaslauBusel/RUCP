@@ -35,9 +35,9 @@ namespace RUCPc.Cryptography
         }
         private void Convert(Packet packet, ICryptoTransform crypto)
         {
-            int encryptLength = Transform(packet.Data, Packet.headerLength, packet.Length - Packet.headerLength, crypto);
+            int encryptLength = Transform(packet.Data, Packet.HEADER_SIZE, packet.Length - Packet.HEADER_SIZE, crypto);
   
-            packet.Length = Packet.headerLength + encryptLength;
+            packet.Length = Packet.HEADER_SIZE + encryptLength;
         }
         private int Transform(byte[] buffer, int offset, int count, ICryptoTransform transform)
         {

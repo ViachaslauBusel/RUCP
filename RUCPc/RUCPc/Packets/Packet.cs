@@ -15,8 +15,11 @@ namespace RUCPc.Packets
     {
 		/// <summary>
 		/// Длина заголовка пакета
+		/// 1 байт - 1 бит флаг зашифровано ли содержимое пакета. Остальные байты канал пакета
+		/// 2-3 байт - Тип пакета
+		/// 4-5 байт - Порядковый номер пакета
 		/// </summary>
-		internal const int headerLength = 5;
+		internal const int HEADER_SIZE = 5;
 
 		private long sendTime = 0;//Время отправки
 		public long ResendTime { get; private set; } = 0;//Время повторной отправки пакета при неудачной попытке доставки
@@ -42,24 +45,25 @@ namespace RUCPc.Packets
 			return ResendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
 		}
+		/// <summary>Время прошедшее с момента первой отправки этого пакета</summary>
 		internal long CalculatePing()
 		{
 			return (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sendTime);
 		}
 
+		/// <summary>
+		/// Использует ли пакет шифрование
+		/// </summary>
 		public bool Encrypt
 		{
 			get => (Data[0] & 0b1000_0000) == 0b1000_0000;
 			set { if (value) Data[0] |= 0b1000_0000; else Data[0] &= 0b0111_1111; }
 		}
-		/***
-		 * Возврощает канал по которому будет\был передан пакет
-		 * @return
-		 */
+		/// <summary>Возврощает канал по которому будет\был передан пакет</summary>
 		public int Channel
 		{
 			get => Data[0] & 0b0111_1111;
-			private set { Data[0] = (byte)value; }
+			private set { Data[0] = (byte)value;  }
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -68,10 +72,9 @@ namespace RUCPc.Packets
 			return Channel == channel;
 		}
 
-		/***
-			 * Задает порядковый номер отпровляемого пакета.
-			 *
-			 */
+		/// <summary>
+		/// Задает порядковый номер отпровляемого пакета.
+		/// <summary>
 		unsafe internal void WriteNumber(ushort number)
 		{
 			fixed (byte* d = Data)

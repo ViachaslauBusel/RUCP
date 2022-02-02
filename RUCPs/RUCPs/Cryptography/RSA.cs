@@ -30,16 +30,16 @@ namespace RUCPs.Cryptography
         internal void Encrypt(Packet packet)
         {
             Span<byte> spanData = packet.Data;
-            encryptor.TryEncrypt(spanData.Slice(Packet.headerLength, packet.Length - Packet.headerLength), spanData.Slice(Packet.headerLength, packet.Data.Length - Packet.headerLength),
+            encryptor.TryEncrypt(spanData.Slice(Packet.HEADER_SIZE, packet.Length - Packet.HEADER_SIZE), spanData.Slice(Packet.HEADER_SIZE, packet.Data.Length - Packet.HEADER_SIZE),
                            RSAEncryptionPadding.OaepSHA1, out int bytesWritten);
-            packet.Length = Packet.headerLength + bytesWritten;
+            packet.Length = Packet.HEADER_SIZE + bytesWritten;
         }
         internal void Decrypt(Packet packet)
         {
             Span<byte> spanData = packet.Data;
-            Span<byte> buffer = decryptor.Decrypt(spanData.Slice(Packet.headerLength, packet.Length - Packet.headerLength).ToArray(), false);
-            buffer.CopyTo(spanData.Slice(Packet.headerLength, buffer.Length));
-            packet.Length = Packet.headerLength + buffer.Length;
+            Span<byte> buffer = decryptor.Decrypt(spanData.Slice(Packet.HEADER_SIZE, packet.Length - Packet.HEADER_SIZE).ToArray(), false);
+            buffer.CopyTo(spanData.Slice(Packet.HEADER_SIZE, buffer.Length));
+            packet.Length = Packet.HEADER_SIZE + buffer.Length;
         }
 
         internal void Dispose()

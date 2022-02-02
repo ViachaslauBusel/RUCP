@@ -45,11 +45,15 @@ namespace RUCPs.Packets
         {
             WriteValue(&value, 2);
         }
-
-        public void WriteByte(byte value)
+        unsafe public void WriteUshort(ushort value)
+        {
+            WriteValue(&value, 2);
+        }
+        public ref byte WriteByte(byte value)
         {
             Data[index++] = value;
             Length = index;
+            return ref Data[index - 1];
         }
 
         public void WriteBool(bool value)

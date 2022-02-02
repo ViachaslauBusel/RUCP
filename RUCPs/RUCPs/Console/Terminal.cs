@@ -13,58 +13,51 @@ using System.Threading.Tasks;
 
 namespace RUCPs.Console
 {
-    public class Terminal
+    public static class Terminal
     {
-     //   private Server server;
-        private Dictionary<string, Command> commands = new Dictionary<string, Command>();
-        public Terminal(Server server)
+
+        private static Dictionary<string, ICommand> m_commands = new Dictionary<string, ICommand>();
+        static Terminal()
         {
-           // this.server = server;
-            commands.Add("help", new Command("help", "Display information about builtin commands", (q) =>
+            m_commands.Add("help", new Command("help", "Display information about builtin commands", (q) =>
             {
-                foreach(KeyValuePair<string, Command> c in commands)
-                        PrintHelp(c.Value.Name, c.Value.Description);
+                foreach (KeyValuePair<string, ICommand> c in m_commands)
+                { PrintHelp(c.Value.Name, c.Value.Description); }
             }));
-            commands.Add("stop", new Command("stop", "The command brings the server down in a secure way", (q) => server.Stop()));
-            commands.Add("start", new Command("start", "The command starts the server", (q) => server.Start()));
-            commands.Add("restart", new Command("restart", "The command restart the server", (q) => { server.Stop(); server.Start(); }));
-            commands.Add("debug", new Command("debug", "Working with exceptions and messages", (q) => DebugCommand.Command(q)));
-            commands.Add("online", new Command("online", "Number of connected clients", (q) => System.Console.WriteLine($"online: {ClientList.online()}")));
-            commands.Add("keygen", new Command("keygen", "Generate a key to establish a secure connection", (q) => ContainerRSAKey.GenerateKey()));
-            commands.Add("exit", new Command("exit", "Finish working with the terminal", (q) => throw new TerminalException()));
+
+            m_commands.Add("online", new Command("online", "Number of connected clients", (q) => System.Console.WriteLine($"online: {ClientList.online()}")));
+            m_commands.Add("keygen", new Command("keygen", "Generate a key to establish a secure connection", (q) => ContainerRSAKey.GenerateKey()));
+            m_commands.Add("exit", new Command("exit", "Finish working with the terminal", (q) => throw new TerminalException()));
         }
-        public void Listen()
+        public static void Listen()
         {
             while (true)
             {
                 try
                 {
-                    ConsoleColor defaultColor = System.Console.ForegroundColor;
-                    System.Console.ForegroundColor = ConsoleColor.Green;
-                    System.Console.Write("Server: ");
-                    System.Console.ForegroundColor = defaultColor;
+                    Print("Server: ", ConsoleColor.Green);
 
                     string[] commandArray = System.Console.ReadLine().Split(" ");
                     for (int i = 0; i < commandArray.Length; i++) commandArray[i] = commandArray[i].Trim().ToLower();
                     Queue<string> command = new Queue<string>(commandArray);
 
                     if (command.TryDequeue(out string strtCommand)
-                    && commands.ContainsKey(strtCommand))
-                        commands[strtCommand].Invoke(command);
+                    && m_commands.ContainsKey(strtCommand))
+                    { m_commands[strtCommand].Process(command); }
                     else System.Console.WriteLine("Command not found. Please use 'help' command");
                 }
                 catch(TerminalException) { return; }
-                catch (Exception e) { Debug.Log(e); }
+                catch (Exception e) { Server.CallException(e); }
 
             }
         }
 
-        public void AddCommand(Command command)
+        public static void AddCommand(ICommand command)
         {
-            if (commands.ContainsKey(command.Name))
-            { commands[command.Name] = command; }
+            if (m_commands.ContainsKey(command.Name))
+            { m_commands[command.Name] = command; }
             else
-            { commands.Add(command.Name, command); }
+            { m_commands.Add(command.Name, command); }
         }
 
         internal static void PrintHelp(string name, string description)

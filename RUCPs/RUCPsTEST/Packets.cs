@@ -1,6 +1,8 @@
 ﻿using NUnit.Framework;
 using RUCPs.Packets;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace RUCP_Test
 {
@@ -29,6 +31,8 @@ namespace RUCP_Test
         [Test]
         public void CreatePacketPool()
         {
+            Stopwatch time10kOperations = Stopwatch.StartNew();
+            long start = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             Queue<Packet> collection = new Queue<Packet>();
             for (int i = 0; i < 200; i++)
             {
@@ -43,7 +47,10 @@ namespace RUCP_Test
                     collection.Dequeue().Dispose();
                 }
             }
-
+            time10kOperations.Stop();
+            long finish = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - start;
+            long milliSec = time10kOperations.ElapsedTicks;
+            Console.WriteLine($"StopWatch:{milliSec}ms standart{finish}");
             Assert.Pass();
         }
         [Test]

@@ -25,8 +25,8 @@ namespace RUCPs.Client
 		public IPEndPoint Address { get; private set; }
 		private IProfile profile;
 		
-		private int rtt = 0;//Средняя время колебаний задержек пакетов
-		private int ping = 500;
+		private int m_devRTT = 0;//Средняя время колебаний задержек пакетов
+		private int m_estimatedRTT = 500;
 
 		public long ID { get; private set; }
 		private bool online = false;
@@ -46,21 +46,20 @@ namespace RUCPs.Client
 			this.Address = address;
 			this.profile = profile;
 			ID = SocketInformer.GetID(address);
-			Ping = 500;
 		}
 
 		/// <summary>
 		/// Время до повторной отправки неподтвержденных пакетов 
 		/// </summary>
-		public int GetTimeout() => Ping + 5 * ((rtt < 4) ? 4 : rtt);
+		public int GetTimeoutInterval() => Ping + 5 * ((m_devRTT < 4) ? 4 : m_devRTT);
 
 		public int Ping
 		{
-			get { return ping; }
+			get { return m_estimatedRTT; }
 			set
 			{
-				rtt = (int)(rtt * 0.75 + Math.Abs(value - ping) * 0.25);
-				ping = (int)(ping * 0.875 + value * 0.125);
+				m_devRTT = (int)(m_devRTT * 0.75 + Math.Abs(value - m_estimatedRTT) * 0.25);
+				m_estimatedRTT = (int)(m_estimatedRTT * 0.875 + value * 0.125);
 			}
 		}
 
@@ -114,7 +113,7 @@ namespace RUCPs.Client
 		/// <summary>
 		/// Отсылает клиенту команду на отключения
 		/// </summary>
-		private void Disconnect()
+		internal void Disconnect()
 		{
 			 Packet.Create(this, Channel.Disconnect).Send();
 		}
