@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.32002.261
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RUCP", "RUCP\RUCP.csproj", "{2C95F594-7D08-4301-B1BA-EE5AC55DB7B9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "nTests", "nTests\nTests.csproj", "{EFF62AE8-EE12-43E4-B239-B5088F44CC61}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		Unity|Any CPU = Unity|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2C95F594-7D08-4301-B1BA-EE5AC55DB7B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C95F594-7D08-4301-B1BA-EE5AC55DB7B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C95F594-7D08-4301-B1BA-EE5AC55DB7B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C95F594-7D08-4301-B1BA-EE5AC55DB7B9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C95F594-7D08-4301-B1BA-EE5AC55DB7B9}.Unity|Any CPU.ActiveCfg = Unity|Any CPU
+		{2C95F594-7D08-4301-B1BA-EE5AC55DB7B9}.Unity|Any CPU.Build.0 = Unity|Any CPU
+		{EFF62AE8-EE12-43E4-B239-B5088F44CC61}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EFF62AE8-EE12-43E4-B239-B5088F44CC61}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EFF62AE8-EE12-43E4-B239-B5088F44CC61}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EFF62AE8-EE12-43E4-B239-B5088F44CC61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EFF62AE8-EE12-43E4-B239-B5088F44CC61}.Unity|Any CPU.ActiveCfg = Debug|Any CPU
+		{EFF62AE8-EE12-43E4-B239-B5088F44CC61}.Unity|Any CPU.Build.0 = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {182BCEE2-36F8-455C-BB0A-AD2AFC8A51BD}
+	EndGlobalSection
+EndGlobal
