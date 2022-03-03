@@ -9,6 +9,7 @@ namespace RUCP.Transmitter
     internal class UDPSocket
     {
         private Socket m_socket = null;
+        private bool connection = false;
 
 
 
@@ -28,11 +29,13 @@ namespace RUCP.Transmitter
         internal void Connect(IPEndPoint iPEndPoint)
         {
            m_socket.Connect(iPEndPoint);
+            connection = true;
         }
 
         internal void SendTo(Packet packet, IPEndPoint remoteAdress)
         {
-            m_socket.SendTo(packet.Data, packet.Length, SocketFlags.None, remoteAdress);
+            if (connection) { m_socket.Send(packet.Data, packet.Length, SocketFlags.None); }
+            else { m_socket.SendTo(packet.Data, packet.Length, SocketFlags.None, remoteAdress); }
         }
         internal void Send(Packet packet)
         {
