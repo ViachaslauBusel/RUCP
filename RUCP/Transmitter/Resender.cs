@@ -42,12 +42,14 @@ namespace RUCP.Transmitter
                     if (packet.ACK || !packet.Client.isConnected()) { packet.Dispose(); continue; }
 
                     //If the waiting time for confirmation of receipt of the package by the client exceeds 6 seconds, disconnect the client
-                    if (packet.CalculatePing() > 6000)
+                    if (packet.CalculatePing() > 10_000)
                     {
+                        Console.WriteLine($"[{m_master.GetType()}]Disconect:{packet.m_sendCicle}");
                         //  Log.Warn($"Lost connection, remote node does not respond for: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.SendTime}ms " +
                         //           $"timeout:{packet.Client.GetTimeout()}ms");
 
                         packet.Client.CloseConnection();
+                        packet.Dispose();
                         continue;
                     }
 

@@ -24,7 +24,7 @@ namespace RUCP
         public NetworkStatus Status { get; internal set; } = NetworkStatus.LISTENING;
 
         /// <summary>
-        /// Количество отправленных пакетов по надежным каналас
+        /// Количество отправленных пакетов по надежным каналам
         /// </summary>
         public int SentPackets
         {

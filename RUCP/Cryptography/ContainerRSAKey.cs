@@ -15,7 +15,7 @@ namespace RUCP.Cryptography
             using (RSACryptoServiceProvider rsa = new RSACryptoServiceProvider(2048))
             {
                 publicKey = rsa.ExportParameters(false);
-                privateKey = rsa.ExportRSAPrivateKey();
+              //  privateKey = rsa.ExportRSAPrivateKey();
             }
             //    System.Console.WriteLine("public: "+BitConverter.ToString(publicKey));
             //   System.Console.WriteLine("private: " + BitConverter.ToString(privateKey));
@@ -28,7 +28,7 @@ namespace RUCP.Cryptography
             }
             using (FileStream file = new FileStream("private.key", FileMode.Create))
             {
-                file.Write(privateKey);
+            //    file.Write(privateKey);
             }
             System.Console.WriteLine("key generated successfully");
         }

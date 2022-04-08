@@ -9,23 +9,19 @@ namespace RUCP.Channels
 		/// <summary>
 		/// размер окна нумерации пакетов
 		/// </summary>
-		protected const int NUMBERING_WINDOW_SIZE = 65_000;
+		internal const int SEQUENCE_WINDOW_SIZE = 65_536;
+		internal const int HALF_NUMBERING_WINDOW_SIZE = SEQUENCE_WINDOW_SIZE / 2;
 
-		//Буффер для хранения полеченных пакетов
-		protected Packet[] receivedPackages;
-		//Буффер для хранения отправленных пакетов
-		protected Packet[] sentPackages;
-		//Порядковый номер отправляемого пакета
-		protected volatile int numberSent = 0;
-		/// <summary>Ожидаемый порядковый номер получаемого пакета</summary>
-		protected volatile int m_nextExpectedSequenceNumber = 0;
-		protected volatile int m_lastPrecessedSequenceNumber = 0;
+		/// <summary>Буффер для хранения отправленных пакетов</summary>
+		private Packet[] m_sentPackages;
+		/// <summary>Порядковый номер отправляемого пакета</summary>
+		private volatile int m_numberSent = 0;
+
 
 
 		internal Buffer(int size)
 		{
-			receivedPackages = new Packet[size];
-			sentPackages = new Packet[size];
+			m_sentPackages = new Packet[size];
 		}
 
 		/// <summary>
@@ -34,14 +30,14 @@ namespace RUCP.Channels
 		/// <param name="number"></param>
 		public void ConfirmAsk(int number)
 		{
-			lock (sentPackages)
+			lock (m_sentPackages)
 			{
-				int index = number % sentPackages.Length;
-				if (sentPackages[index] != null && sentPackages[index].ReadNumber() == number)
+				int index = number % m_sentPackages.Length;
+				if (m_sentPackages[index] != null && m_sentPackages[index].Sequence == number)
 				{
-					sentPackages[index].ACK = true;
-					sentPackages[index].Client.Network.Ping = sentPackages[index].CalculatePing();
-					sentPackages[index] = null;
+					m_sentPackages[index].ACK = true;
+					m_sentPackages[index].Client.Network.Ping = m_sentPackages[index].CalculatePing();
+					m_sentPackages[index] = null;
 				}
 			}
 		}
@@ -50,26 +46,27 @@ namespace RUCP.Channels
 		/// </summary>
 		internal void Insert(Packet packet)
 		{
-			lock (sentPackages)
+			lock (m_sentPackages)
 			{
-				packet.WriteNumber((ushort)numberSent);
-				int index = numberSent % sentPackages.Length;
+			
+				int index = m_numberSent % m_sentPackages.Length;
 				//Если пакет в буффере еще не подтвержден и требует переотправки
-				if (sentPackages[index] != null)
+				if (m_sentPackages[index] != null)
 				{
 					throw new BufferOverflowException("send buffer overflow");
 				}
+				packet.Sequence = (ushort)m_numberSent;
+				m_sentPackages[index] = packet;
 
-				sentPackages[index] = packet;
-
-				numberSent = (numberSent + 1) % NUMBERING_WINDOW_SIZE;
+				m_numberSent = (m_numberSent + 1) % SEQUENCE_WINDOW_SIZE;
 			}
 		}
 
 		internal void Dispose()
 		{
-			for (int i = 0; i < receivedPackages.Length; i++)
-				receivedPackages[i]?.Dispose();
+			//The resender will release these packets
+			//for (int i = 0; i < receivedPackages.Length; i++)
+			//	receivedPackages[i]?.Dispose();
 		}
 	}
 }

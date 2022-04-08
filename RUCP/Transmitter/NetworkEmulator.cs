@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RUCP.Transmitter;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -6,41 +7,40 @@ using System.Text;
 
 namespace RUCP.Transmitter
 {
-    internal class UDPSocket : ISocket
+    public class NetworkEmulator : ISocket
     {
+        class NetworkBuffer
+        {
+            public long timeStamp;
+            public byte[] data;
+            public EndPoint endPoint;
+        }
+
         private Socket m_socket = null;
-        private bool connection = false;
+        private List<NetworkBuffer> m_buffer = new List<NetworkBuffer>();
+
 
         public int AvailableBytes => m_socket.Available;
-
-
-
-        //  private static UdpClient udpClient;
-
-        private UDPSocket(int localPort) 
+        private NetworkEmulator(int localPort) 
         {
             m_socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint localIP = new IPEndPoint(IPAddress.Any, localPort);
             m_socket.Bind(localIP);
         }
-        internal static UDPSocket CreateSocket(int localPort = 0)
+        public static ISocket CreateNetworkEmulatorSocket(int localPort = 0)
         {
-            UDPSocket udp = new UDPSocket(localPort);
-          
-
-            return udp;
+            return new NetworkEmulator(localPort);
         }
+
 
         public void Connect(IPEndPoint iPEndPoint)
         {
-           m_socket.Connect(iPEndPoint);
-            connection = true;
+            m_socket.Connect(iPEndPoint);
         }
 
         public void SendTo(Packet packet, IPEndPoint remoteAdress)
         {
-            if (connection) { m_socket.Send(packet.Data, packet.Length, SocketFlags.None); }
-            else { m_socket.SendTo(packet.Data, packet.Length, SocketFlags.None, remoteAdress); }
+            m_socket.SendTo(packet.Data, packet.Length, SocketFlags.None, remoteAdress);
         }
         public void Send(Packet packet)
         {
@@ -52,7 +52,7 @@ namespace RUCP.Transmitter
         }
 
         public int ReceiveFrom(byte[] buffer, ref EndPoint endPoint)
-        { 
+        {
             return m_socket.ReceiveFrom(buffer, ref endPoint);
         }
 

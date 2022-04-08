@@ -7,7 +7,7 @@ namespace RUCP
 {
     internal interface IServer
     {
-        UDPSocket Socket { get; }
+        ISocket Socket { get; }
         Resender Resender { get; }
 
         void CallException(Exception exception);

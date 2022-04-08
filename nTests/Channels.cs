@@ -1,9 +1,12 @@
 using NUnit.Framework;
 using RUCP;
+using RUCP.Channels;
+using RUCP.Transmitter;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace nTests
 {
@@ -40,7 +43,7 @@ namespace nTests
 
 
         private Server m_server;
-        private Client[] m_clients = new Client[500];
+        private Client[] m_clients = new Client[512];
 
         private bool InterrogateClients(Predicate<Client> predicate)
         {
@@ -53,7 +56,7 @@ namespace nTests
         [SetUp]
         public void SetUp()
         {
-            m_server = new Server(3232);
+            m_server = new Server(3232, networkEmulator: true);
             m_server.SetHandler(() => new ServerProfile());
             m_server.Start();
 
@@ -61,7 +64,7 @@ namespace nTests
             {
                 m_clients[i] = new Client();
                 m_clients[i].SetProfile(new UnityProfile());
-                m_clients[i].ConnectTo("127.0.0.1", 3232);
+                m_clients[i].ConnectTo("127.0.0.1", 3232, networkEmulator: true);
             }
             Stopwatch stopwatch = Stopwatch.StartNew();
 
@@ -83,20 +86,24 @@ namespace nTests
         [Test]
         public void TestReliable_1()
         {
-            int numberTest = 1000;
+            int numberTest = 550;
             int testSum = Enumerable.Range(0, numberTest).Sum();
+
+
+            Action<Client, int> action = (c, j) =>
+             {
+                 Packet packet = Packet.Create(c, Channel.Reliable);
+                 packet.WriteType(1);
+                 packet.WriteInt(j);
+                 packet.Send();
+             };
 
             Stopwatch timer = Stopwatch.StartNew();
             for (int j = 0; j < numberTest; j++)
             {
-                for (int i = 0; i < m_clients.Length; i++)
-                {
-                    Packet packet = Packet.Create(m_clients[i], Channel.Reliable);
-                    packet.WriteType(1);
-                    packet.WriteInt(j);
-                    packet.Send();
-                }
+                Parallel.ForEach(m_clients, (c) => action(c, j));   
             }
+            double sendTime = timer.Elapsed.TotalMilliseconds;
             Stopwatch stopwatch = Stopwatch.StartNew();
             while (true)
             {
@@ -121,12 +128,29 @@ namespace nTests
                 }
                 if (stopwatch.Elapsed.TotalMilliseconds > 10_000.0)
                 {
+                    InterrogateClients((c) =>
+                    {
+                        if (((UnityProfile)c.Profile).AvailablePackets != numberTest)
+                        {
+                            Console.WriteLine($"AvailablePackets:{((UnityProfile)c.Profile).AvailablePackets} ClientOnline:{c.Network.Status}");
+                        }
+                        return true;
+                    });
                     Assert.Fail();
                     return;
                 }
             }
             timer.Stop();
-            Console.WriteLine($"Total time:{timer.Elapsed.TotalMilliseconds}ms");
+            Console.WriteLine($"Send time:{sendTime}. Total time:{timer.Elapsed.TotalMilliseconds}ms");
+
+            int sumResentPackets = 0;
+            InterrogateClients((c) =>
+            {
+                sumResentPackets += c.Network.ResentPackets;
+                  
+                return true;
+            });
+            Console.WriteLine($"ResentPackets:{sumResentPackets}");
             //ver. 0.010
             //- 23070,5893ms
             //- 23741,4702ms
@@ -138,21 +162,34 @@ namespace nTests
         {
             if(m_clients.Length == 0) { Assert.Fail(); return; }
 
-            int numberTest = 200_000;
+            int numberTest = 1_000_000;
             int testSum = 0;
             for(int i=0; i<numberTest; i++)
             {
                 testSum += i;
             }
-           
+           Stopwatch timer =  Stopwatch.StartNew();
             for (int j = 0; j < numberTest; j++)
             {
-                while((j - ((UnityProfile)m_clients[0].Profile).AvailablePackets) > 200) { Thread.Sleep(1); }
+             
                 Packet packet = Packet.Create(m_clients[0], Channel.Reliable);
                 packet.WriteType(1);
                 packet.WriteInt(j);
-                packet.Send();
+                while (true)
+                {
+                    try
+                    {
+                        packet.Send();
+                        break;
+                    }
+                    catch (BufferOverflowException)
+                    {
+                        Thread.Sleep(1);
+                    }
+                    catch { Assert.Fail(); return; }
+                }
             }
+            double sendTime = timer.Elapsed.TotalMilliseconds; 
             Stopwatch stopwatch = Stopwatch.StartNew();
             while (true)
             {
@@ -166,22 +203,158 @@ namespace nTests
                         int sum = 0;
                         unityProfile.Handlers.RegisterHandler(1, (Packet) => sum += Packet.ReadInt());
                         unityProfile.ProcessPacket(numberTest);
-                    Console.WriteLine($"test:{testSum} sum:{sum}");
+                 //   Console.WriteLine($"test:{testSum} sum:{sum}");
                     if (sum == testSum)
                     {
-                        Assert.Pass();
-                        return;
+                        break;
                     }
                     Assert.Fail();
                     return;
                 }
                 if (stopwatch.Elapsed.TotalMilliseconds > 20_000.0)
                 {
+                    Console.WriteLine($"AvailablePackets:{((UnityProfile)m_clients[0].Profile).AvailablePackets}");
                     Assert.Fail();
                     return;
                 }
             }
+            timer.Stop();
+            Console.WriteLine($"Send time:{sendTime}. Total time:{timer.Elapsed.TotalMilliseconds}");
+
+            Assert.Pass();
+        }
+        [Test]
+        public void TestQueue_1()
+        {
+            if (m_clients.Length == 0) { Assert.Fail(); return; }
+
+            int numberTest = 1_000_000;
+
+            Stopwatch timer = Stopwatch.StartNew();
+            for (int j = 0; j < numberTest; j++)
+            {
+                while ((j - ((UnityProfile)m_clients[0].Profile).AvailablePackets) > 200) { Thread.Sleep(1); }
+                Packet packet = Packet.Create(m_clients[0], Channel.Queue);
+                packet.WriteType(1);
+                packet.WriteInt(j);
+                packet.Send();
+            }
+            double sendTime = timer.Elapsed.TotalMilliseconds;
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            while (true)
+            {
+                //Подождать покуда все отправленные пакеты не будет перенаправленны обратно
+                if (((UnityProfile)m_clients[0].Profile).AvailablePackets == numberTest)
+                {
+                    //  Console.WriteLine($"AvailablePackets:{((UnityProfile)m_clients[0].Profile).AvailablePackets} numberTest:{numberTest}");
+                    //Пересчитать суму всех принятых чисел, должно совпадать с суммой отправляемых
+
+                    UnityProfile unityProfile = (UnityProfile)m_clients[0].Profile;
+                    int prevNum = -1;
+                    bool rise = true;
+                    unityProfile.Handlers.RegisterHandler(1, (Packet) =>
+                    {
+                        if (!rise) return;
+                        int num = Packet.ReadInt();
+                        rise = (num - prevNum) == 1;
+                        prevNum = num;
+                    });
+                    unityProfile.ProcessPacket(numberTest);
+                    //   Console.WriteLine($"test:{testSum} sum:{sum}");
+                    if (rise)
+                    {
+                        break;
+                    }
+                    Assert.Fail();
+                    return;
+                }
+                if (stopwatch.Elapsed.TotalMilliseconds > 20_000.0)
+                {
+                    Console.WriteLine($"AvailablePackets:{((UnityProfile)m_clients[0].Profile).AvailablePackets}");
+                    Assert.Fail();
+                    return;
+                }
+            }
+            timer.Stop();
+            Console.WriteLine($"Send time:{sendTime}. Total time:{timer.Elapsed.TotalMilliseconds}");
+
+            Assert.Pass();
         }
 
+        [Test]
+        public void TestDiscard_1()
+        {
+            if (m_clients.Length == 0) { Assert.Fail(); return; }
+
+            int numberTest = 1_000_000;
+
+            Stopwatch timer = Stopwatch.StartNew();
+            for (int j = 0; j <= numberTest; j++)
+            {
+                Packet packet = Packet.Create(m_clients[0], Channel.Discard);
+                packet.WriteType(1);
+                packet.WriteInt(j);
+                while (true)
+                {
+                    try
+                    {
+                        packet.Send();
+                        break;
+                    }
+                    catch (BufferOverflowException)
+                    {
+                        Thread.Sleep(1);
+                    }
+                    catch { Assert.Fail(); return; }
+                }
+            }
+            double sendTime = timer.Elapsed.TotalMilliseconds;
+            Stopwatch stopwatch = Stopwatch.StartNew();
+    
+                //Подождать покуда все отправленные пакеты не будет перенаправленны обратно
+             
+                    //  Console.WriteLine($"AvailablePackets:{((UnityProfile)m_clients[0].Profile).AvailablePackets} numberTest:{numberTest}");
+                    //Пересчитать суму всех принятых чисел, должно совпадать с суммой отправляемых
+
+                    UnityProfile unityProfile = (UnityProfile)m_clients[0].Profile;
+                    int prevNum = -1;
+                    bool rise = true;
+                    unityProfile.Handlers.RegisterHandler(1, (Packet) =>
+                    {
+                        if (!rise) return;
+                        int num = Packet.ReadInt();
+                        rise = (num - prevNum) > 0;
+                        prevNum = num;
+                    });
+            while (true)
+            {
+                unityProfile.ProcessPacket(numberTest);
+                //   Console.WriteLine($"test:{testSum} sum:{sum}");
+                if (prevNum == numberTest || !rise)
+                {
+                    if (rise)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Assert.Fail();
+                        return;
+                    }
+                }
+                if (stopwatch.Elapsed.TotalMilliseconds > 10_000.0)
+                {
+                    Console.WriteLine($"AvailablePackets:{((UnityProfile)m_clients[0].Profile).AvailablePackets}");
+                    Assert.Fail();
+                    return;
+                }
+            }
+               
+            
+            timer.Stop();
+            Console.WriteLine($"Send time:{sendTime}. Total time:{timer.Elapsed.TotalMilliseconds}");
+
+            Assert.Pass();
+        }
     }
 }

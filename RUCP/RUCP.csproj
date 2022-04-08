@@ -1,10 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <Configurations>Debug;Release;Unity</Configurations>
+    <Company>yazZ3va</Company>
+    <Authors>yazZ3va</Authors>
+    <Description>library for creating an authoritative server on the .NET platform</Description>
+    <AssemblyVersion>1.1.0</AssemblyVersion>
+    <FileVersion>1.1.0</FileVersion>
+    <RepositoryUrl>https://github.com/yazZ3va/RUCP</RepositoryUrl>
+    <Copyright>BSD-3-Clause License</Copyright>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unity|AnyCPU'">

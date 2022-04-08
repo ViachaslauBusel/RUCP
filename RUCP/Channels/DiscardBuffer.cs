@@ -7,63 +7,81 @@ namespace RUCP.Channels
 {
     internal class DiscardBuffer : Buffer
     {
+		struct DiscardNode
+		{
+			public ushort Sequence { get; set; }
+			public short Type { get; private set; }
+
+			public void Set(Packet packet)
+			{
+				Sequence = packet.Sequence;
+				Type = (short)packet.ReadType();
+			}
+		}
 		private Client m_master;
+		//Буфер для хранения полученных пакетов, хранит порядковый номер полученного пакета
+		private DiscardNode[] m_receivedPackages;
+		/// <summary>Ожидаемый порядковый номер получаемого пакета</summary>
+		private volatile int m_nextExpectedSequenceNumber = 0;
 
 		internal DiscardBuffer(Client client, int size) : base(size)
 		{
 			this.m_master = client;
+			m_receivedPackages = new DiscardNode[size];
+			m_receivedPackages[0].Sequence = ushort.MaxValue;
 		}
 
 
 		/// <summary>
 		/// Проверка подлежит ли этот полученный пакет обработке
 		/// </summary>
-		internal void Check(Packet packet)
+		internal bool Check(Packet packet)
 		{
-			try
-			{
+			//try
+			//{
 
-				int packetNumber = packet.ReadNumber();//Порядковый номер принятого пакета
-				int bufferIndex = packetNumber % receivedPackages.Length;//Порядковый номер в буфере
+				ushort sequence = packet.Sequence;//Порядковый номер принятого пакета
+				int bufferIndex = sequence % m_receivedPackages.Length;//Порядковый номер в буфере
+			
 
-
-				lock (receivedPackages)
+				lock (m_receivedPackages)
 				{
+					int relative = NumberUtils.RelativeSequenceNumber(sequence, m_receivedPackages[bufferIndex].Sequence);
+					//Буфер приема переполнен пока невозможно принять этот пакет
+					if (relative > m_receivedPackages.Length) return false;
 					//Если пакет еще не был принят
-					if (receivedPackages[bufferIndex] == null
-							// Или если принятый пакет был отправлен после чем пакет записанный в буффер
-							|| NumberUtils.UshortCompare(packetNumber, receivedPackages[bufferIndex].ReadNumber()) > 0)
+					if (relative > 0)
 					{
-						receivedPackages[bufferIndex]?.Dispose();
-						receivedPackages[bufferIndex] = packet;
+						m_receivedPackages[bufferIndex].Set(packet);
 						//Discard >>
-						int compare = NumberUtils.UshortCompare(packetNumber, m_nextExpectedSequenceNumber);
+						int compare = NumberUtils.RelativeSequenceNumber(sequence, m_nextExpectedSequenceNumber);
 						if (compare >= 0)// Пакет пришел первым
 						{
-							m_nextExpectedSequenceNumber = packetNumber;
+							m_nextExpectedSequenceNumber = sequence;
 						}
 						// Пакет пришел не первым, ищем пакеты с таким же типом, если они есть, отбрасываем этот пакет
 						else
 						{
-							for (int x = (packetNumber + 1) % NUMBERING_WINDOW_SIZE; NumberUtils.UshortCompare(x, m_nextExpectedSequenceNumber) <= 0; x = (x + 1) % NUMBERING_WINDOW_SIZE)//Перебор пакетов пришедших после
+							int packetType = packet.ReadType();
+							for (int x = (sequence + 1) % SEQUENCE_WINDOW_SIZE; NumberUtils.RelativeSequenceNumber(x, m_nextExpectedSequenceNumber) <= 0; x = (x + 1) % SEQUENCE_WINDOW_SIZE)//Перебор пакетов пришедших после
 							{
-								Packet pack_rc = receivedPackages[x % receivedPackages.Length];
-								if (pack_rc == null) continue;
-								//Если пакет совпадает по типу и был отправлен после этого пакета
-								if (packet.ReadType() == pack_rc.ReadType() && NumberUtils.UshortCompare(pack_rc.ReadNumber(), packetNumber) > 0)
-								{ return; }
+								int xBuffer = x % m_receivedPackages.Length;
+						
+								//Если пакет совпадает по типу и был отправлен после этого пакета, пакет не подлежит обработке
+								if (packetType == m_receivedPackages[xBuffer].Type && NumberUtils.RelativeSequenceNumber(m_receivedPackages[xBuffer].Sequence, sequence) > 0)
+								{ return true; }
 							}
 						}
 						//Discard <<
 						m_master.HandlerPack(packet);
 					}
-					
 				}
-			}
-			catch (Exception e)
-			{
-				m_master.Server.CallException(e);
-			}
+				return true;
+			//}
+			//catch (Exception e)
+			//{
+			//	m_master.Server.CallException(e);
+			//}
 		}
 	}
 }

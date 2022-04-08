@@ -16,12 +16,15 @@ namespace RUCP
     {
 		private Func<IProfile> m_createProfile;
 
-		private UDPSocket m_socket;
+		private ISocket m_socket;
 		private ClientList m_clients;
 		private Resender m_resender;
 		private CheckingConnections m_cheking;
 		private int m_port;
-		
+		private bool m_asyncPacketReading = false;
+		private bool m_networkEmulator = false;
+
+
 		private volatile int m_processPackets = 0;
 		private volatile int m_completedPackets = 0;
 
@@ -32,7 +35,7 @@ namespace RUCP
 
 		
 		//internal void CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
-		UDPSocket IServer.Socket => m_socket;
+		ISocket IServer.Socket => m_socket;
 		Resender IServer.Resender => m_resender;
 
 		void IServer.CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
@@ -61,19 +64,21 @@ namespace RUCP
 			return m_createProfile.Invoke();
 		}
 
-		public Server(int port)
+		public Server(int port, bool networkEmulator = false)
 		{
 			this.m_port = port;
+			m_networkEmulator = networkEmulator;
 		}
 
-		public void Start()
+		public void Start(bool asyncPacketReading = true)
 		{
 			try
 			{
 				System.Console.WriteLine($"RUCP ver.{Config.VESRSION.ToString("0.000")}");
+				m_asyncPacketReading = asyncPacketReading;
 				//	buffer = new BlockingCollection<Packet>(new ConcurrentQueue<Packet>());
 				//Создание сокета по порту для считывание данных
-				m_socket = UDPSocket.CreateSocket(m_port);
+				m_socket = m_networkEmulator ? NetworkEmulator.CreateNetworkEmulatorSocket(m_port) : UDPSocket.CreateSocket(m_port);
 
 				RSA.SetPrivateKey(ContainerRSAKey.LoadPrivateKey());
 
@@ -86,29 +91,69 @@ namespace RUCP
 				//Запуск потока проверки соединений
 				m_cheking = CheckingConnections.Start(this);
 
-				//Запуск потока считывание датаграмм
-				Thread server_th = new Thread(() => Run());
-				server_th.IsBackground = false;
-				server_th.Start();
+				if (m_asyncPacketReading)
+				{
+					//Запуск потока считывание датаграмм
+					Thread server_th = new Thread(() => Run());
+					server_th.IsBackground = false;
+					server_th.Start();
+				}
 
 				System.Console.WriteLine("The server was started successfully");
 			}
 			catch (Exception e)
 			{
-				System.Console.WriteLine("Failed to start server");
+				System.Console.WriteLine("Failed to start the server");
 				CallException(e);
 			}
 		}
 
+		public void ProcessPacket()
+        {
+			if (m_asyncPacketReading || m_socket == null) return;
+			int availableBytes = m_socket.AvailableBytes;
+			EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
+			while (availableBytes > 0)
+			{
+				try
+				{   //Создание нового пакета для хранение данных
+					Packet packet = Packet.Create();
+
+					//Считывание датаграм
+					int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref senderRemote);
+					availableBytes -= receiveBytes;
+					packet.InitData(receiveBytes);
+					packet.InitClient(m_clients.GetClient((IPEndPoint)senderRemote));
+					
+
+						PacketHandler.Process(this, packet);
+
+
+				}
+				catch (SocketException e)
+				{
+					if (e.ErrorCode == 10004)
+						break;
+					if (e.ErrorCode == 10054)
+						continue;
+					CallException(e);
+				}
+				catch (Exception e)
+				{
+					CallException(e);
+				}
+			}
+		}
 
 		//Считывание датаграм из сокета
-		internal void Run()
+		private void Run()
 		{
 			EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
 			while (true)
 			{
 				try
-				{            //Создание нового пакета для хранение данных
+				{   
+					//Создание нового пакета для хранение данных
 					Packet packet = Packet.Create();
 
 					//Считывание датаграм

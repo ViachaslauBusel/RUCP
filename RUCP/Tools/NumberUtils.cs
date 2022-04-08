@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using RUCP.Channels;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -15,8 +16,8 @@ namespace RUCP.Tools
         /// <returns></returns>
         public static int UshortCompare(int x, int y)
         {
-            Debug.Assert(x <= ushort.MaxValue & x >= 0,  $"NumberUtils: параметр X:{x} имеет допустимое значение");
-            Debug.Assert(y <= ushort.MaxValue & y >= 0, $"NumberUtils: параметр Y:{y} имеет допустимое значение");
+            Debug.Assert(x <= ushort.MaxValue & x >= 0,  $"NumberUtils: параметр X:{x} имеет недопустимое значение");
+            Debug.Assert(y <= ushort.MaxValue & y >= 0, $"NumberUtils: параметр Y:{y} имеет недопустимое значение");
             if (x > y)
             {
                 int z = x - y;
@@ -32,6 +33,17 @@ namespace RUCP.Tools
             }
 
             return 0;
+        }
+
+        /// <summary>
+        ///  Возвращает отрицательное число если X < Y, 0 если X == Y, если X > Y возвращает положительное число
+        /// </summary>
+        /// <returns></returns>
+        public static int RelativeSequenceNumber(int x, int y)
+        {
+            Debug.Assert(x <= Buffer.SEQUENCE_WINDOW_SIZE & x >= 0, $"NumberUtils: параметр X:{x} имеет недопустимое значение");
+            Debug.Assert(y <= Buffer.SEQUENCE_WINDOW_SIZE & y >= 0, $"NumberUtils: параметр Y:{y} имеет недопустимое значение");
+            return (x - y + Buffer.SEQUENCE_WINDOW_SIZE + Buffer.HALF_NUMBERING_WINDOW_SIZE) % Buffer.SEQUENCE_WINDOW_SIZE - Buffer.HALF_NUMBERING_WINDOW_SIZE;
         }
     }
 }

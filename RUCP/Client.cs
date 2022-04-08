@@ -1,6 +1,7 @@
 ﻿using RUCP.Channels;
 using RUCP.Cryptography;
 using RUCP.Tools;
+using RUCP.Transmitter;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,7 +33,7 @@ namespace RUCP
         internal AES CryptographerAES { get; set; } = new AES();
 
         internal IServer Server => m_server;
-        /// <summary>Адрес удаленного узла</summary>
+        /// <summary>Адрес удаленного узла с которым соединён этот клиент</summary>
         public IPEndPoint RemoteAdress => m_remoteAdress;
         public NetworkInfo Network => m_network;    
         public IProfile Profile => m_profile;
@@ -48,25 +49,26 @@ namespace RUCP
             ID = SocketInformer.GetID(adress);
             m_profile = server.CreateProfile();
 
-            m_bufferReliable = new ReliableBuffer(this, 500);
-            m_bufferQueue = new QueueBuffer(this, 500);
-            m_bufferDiscard = new DiscardBuffer(this, 500);
+            m_bufferReliable = new ReliableBuffer(this, 512);
+            m_bufferQueue = new QueueBuffer(this, 512);
+            m_bufferDiscard = new DiscardBuffer(this, 512);
         }
         public Client()
         {
             isRemoteHost = true;
             m_profile = new LocalProfile();
-            m_bufferReliable = new ReliableBuffer(this, 500);
-            m_bufferQueue = new QueueBuffer(this, 500);
-            m_bufferDiscard = new DiscardBuffer(this, 500);
+            m_bufferReliable = new ReliableBuffer(this, 512);
+            m_bufferQueue = new QueueBuffer(this, 512);
+            m_bufferDiscard = new DiscardBuffer(this, 512);
         }
-        public void ConnectTo(string adress, int port)
+
+        public void ConnectTo(string adress, int port, bool networkEmulator = false)
         {
             if(m_server != null) { throw new Exception("The client is already connected to the remote host"); }
             if (m_profile == null) { throw new Exception("Профиль для обработки пакетов не задан"); }
 
             m_remoteAdress = new IPEndPoint(IPAddress.Parse(adress), port);
-            m_server = new RemoteServer(this, m_remoteAdress);
+            m_server = new RemoteServer(this, m_remoteAdress, networkEmulator);
          
             ID = SocketInformer.GetID(m_remoteAdress);
         }
@@ -109,7 +111,7 @@ namespace RUCP
         /// <summary>
         /// Removing a client from the list of connections and calling the CloseConnection method in the profile
         /// </summary>
-        internal void CloseConnection(bool disconnect = true)
+        public void CloseConnection(bool disconnect = true)
         {
             if (disconnect)
                 Disconnect();
@@ -171,31 +173,40 @@ namespace RUCP
         private void SendACK(Packet packet, int channel)
         {
             Packet packet1 = Packet.Create(packet.Client, channel);
-            packet1.WriteNumber((ushort)packet.ReadNumber());
+            packet1.Sequence = packet.Sequence;
             packet1.Send();
         }
         //Обработка пакетов
         internal void ProcessReliable(Packet packet)
         {
-            //Отправка ACK>>
-            SendACK(packet, Channel.ReliableACK);
-            //Отправка ACK<<
-            m_bufferReliable.Check(packet);
+
+            if (m_bufferReliable.Check(packet))
+            {
+                //Отправка ACK>>
+                SendACK(packet, Channel.ReliableACK);
+                //Отправка ACK<<
+            }
 
         }
         internal void ProcessQueue(Packet packet)
         {
-            //Отправка ACK>>
-            SendACK(packet, Channel.QueueACK);
-            //Отправка ACK<<
-            m_bufferQueue.Check(packet);
+            
+            if (m_bufferQueue.Check(packet))
+            {
+                //Отправка ACK>>
+                SendACK(packet, Channel.QueueACK);
+                //Отправка ACK<<
+            }
         }
         internal void ProcessDiscard(Packet packet)
         {
-            //Отправка ACK>>
-            SendACK(packet, Channel.DiscardACK);
-            //Отправка ACK<<
-            m_bufferDiscard.Check(packet);
+           
+            if (m_bufferDiscard.Check(packet))
+            {
+                //Отправка ACK>>
+                SendACK(packet, Channel.DiscardACK);
+                //Отправка ACK<<
+            }
         }
     }
 }

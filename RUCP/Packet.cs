@@ -7,15 +7,16 @@ using System.Text;
 
 namespace RUCP
 {
-	public enum DataSize
-	{
-		Normal,
-		Large
-	}
+	//public enum DataSize
+	//{
+	//	Normal,
+	//	Large
+	//}
 	public class Packet : PacketData, IDelayed, IComparable, IComparable<Packet>
     {
 
-		private volatile int m_sendCicle = 0;
+		public Packet Next { get; set; } = null;
+		internal volatile int m_sendCicle = 0;
 		private volatile bool m_ack = false;
 		/// <summary>Время отправки пакета</summary>
 		private long m_sendTime;
@@ -31,7 +32,7 @@ namespace RUCP
 		public Client Client { get; private set; }
 
 
-		internal void InitClient(Client client) { Client = client; }
+		public void InitClient(Client client) { Client = client; }
 		/// <summary>
 		/// Записывает время отправки/переотправки
 		/// </summary>
@@ -48,8 +49,8 @@ namespace RUCP
 
 		public bool Encrypt
 		{
-			get => (m_data[0] & 0b1000_0000) == 0b1000_0000;
-			set { if (value) m_data[0] |= 0b1000_0000; else m_data[0] &= 0b0111_1111; }
+			get => false;// (m_data[0] & 0b1000_0000) == 0b1000_0000;
+			set { }// { if (value) m_data[0] |= 0b1000_0000; else m_data[0] &= 0b0111_1111; }
 		}
 		/// <summary>
 		/// Возврощает канал по которому будет\был передан пакет
@@ -61,22 +62,19 @@ namespace RUCP
 		}
 
 		/// <summary>
-		/// Задает порядковый номер отпровляемого пакета.
+		/// Порядковый номер отпровляемого пакета.
 		/// </summary>
-		/// <param name="number"></param>
-		unsafe internal void WriteNumber(ushort number)
-		{
-			fixed (byte* d = m_data)
-			{ Buffer.MemoryCopy(&number, d + 3, 2, 2); }
-		}
+		/// <param name="sequence"></param>
+		unsafe internal ushort Sequence
+        {
+            set
+            {
+				fixed (byte* d = m_data)
+				{ Buffer.MemoryCopy(&value, d + 3, 2, 2); }
+			}
+            get => BitConverter.ToUInt16(m_data, 3);
+        }
 
-		/// <summary>
-		/// Возврощает порядковый номер отпровленного пакета
-		/// </summary>
-		internal int ReadNumber()
-		{
-			return BitConverter.ToUInt16(m_data, 3);
-		}
 
 
 
@@ -108,28 +106,21 @@ namespace RUCP
 
 
 
-
-
-
-		private static ConcurrentBag<Packet> m_packetsBuffer = new ConcurrentBag<Packet>();
-		private static ConcurrentBag<Packet> m_largePacketsBuffer = new ConcurrentBag<Packet>();
-
-		private Packet(Client client, int channel, DataSize dataSize)
+		private Packet(Client client, int channel)
 		{
 
-			m_data = new byte[(dataSize == DataSize.Normal) ? DATA_SIZE : LARGE_DATA_SIZE];
+			m_data = new byte[DATA_SIZE];
 			Reset();
 			this.Client = client;
 			this.Channel = channel;
 
 		}
-		private Packet(DataSize dataSize)
+		private Packet()
 		{
-			m_data = new byte[(dataSize == DataSize.Normal) ? DATA_SIZE : LARGE_DATA_SIZE];
-		//	m_sendCicle = 1;
-			m_realLength = m_index = HEADER_SIZE;
+			m_data = new byte[DATA_SIZE];
+			Reset();
 		}
-		private Packet(Client client, Packet copy_packet)
+		private Packet Copy(Client client, Packet copy_packet)
 		{
 			m_data = new byte[copy_packet.Data.Length];
 			this.Client = client;
@@ -137,6 +128,7 @@ namespace RUCP
 
 			m_index = copy_packet.m_index;
 			m_realLength = copy_packet.m_realLength;
+			return this;
 		}
 
 		/// <summary>
@@ -144,21 +136,19 @@ namespace RUCP
 		/// </summary>
 		/// <param name="channel"></param>
 		/// <returns></returns>
-		public static Packet Create(int channel, DataSize dataSize = DataSize.Normal) => Create(null, channel, dataSize);
+		public static Packet Create(int channel) => Create(null, channel);
 		/// <summary>
 		/// Creates a packet with the channel through which it will be delivered
 		/// </summary>
-		public static Packet Create(Client client, int channel, DataSize dataSize = DataSize.Normal)
+		public static Packet Create(Client client, int channel)
 		{
-			Packet packet;
-			//if ((dataSize == DataSize.Normal) ? m_packetsBuffer.TryTake(out packet) : m_largePacketsBuffer.TryTake(out packet))
-			//{
-			//	packet.Reset();
-			//	packet.Client = client;
-			//	packet.Channel = channel;
-			//	return packet;
-			//}
-			return new Packet(client, channel, dataSize);
+            if (PacketPool.TryTake(out Packet packet))
+            {
+                packet.Client = client;
+                packet.Channel = channel;
+                return packet;
+            }
+            return new Packet(client, channel);
 		}
 		/// <summary>
 		/// Creates a copy of the packet
@@ -168,33 +158,24 @@ namespace RUCP
 		/// <returns></returns>
 		public static Packet Create(Client client, Packet copy_packet)
 		{
-			//if (m_packetsBuffer.TryTake(out Packet packet))
-			//{
-
-			//	packet.Reset();
-			//	packet.Client = client;
-			//	Array.Copy(copy_packet.Data, 0, packet.Data, 0, copy_packet.Length);
-
-			//	packet.m_index = copy_packet.m_index;
-			//	packet.m_realLength = copy_packet.m_realLength;
-			//	return packet;
-			//}
-			return new Packet(client, copy_packet);
+            if (PacketPool.TryTake(out Packet packet))
+            {
+                packet.Copy(client, copy_packet);
+                return packet;
+            }
+            return new Packet().Copy(client, copy_packet);
 		}
-		internal static Packet Create(DataSize dataSize = DataSize.Normal)
+		internal static Packet Create()
 		{
-			//Packet packet;
-			//if ((dataSize == DataSize.Normal) ? m_packetsBuffer.TryTake(out packet) : m_largePacketsBuffer.TryTake(out packet))
-			//{
-			//	packet.Reset();
-			////	packet.m_sendCicle = 1;
-			//	return packet;
-			//}
-			return new Packet(dataSize);
+            if (PacketPool.TryTake(out Packet packet))
+            {
+                return packet;
+            }
+            return new Packet();
 		}
 
 
-		private void Reset()
+		public void Reset()
 		{
 			Client = null;
 			m_ack = false;
@@ -216,8 +197,8 @@ namespace RUCP
 					throw new Exception("Packet is blocked, sending is not possible");
 				}
 
-
-				bool dispose = false;
+	
+			bool dispose = false;
 
 				if (Encrypt) Client.CryptographerAES.Encrypt(this);
 
@@ -236,8 +217,8 @@ namespace RUCP
 		/// </summary>
 		public void Dispose()//TODO если два раза вызвать на одном и том же пакете, то возникнет баг совместного использование одного пакета
 		{
-			//if (m_data.Length == DATA_SIZE) { m_packetsBuffer.Add(this); }
-			//else if (m_data.Length == LARGE_DATA_SIZE) { m_largePacketsBuffer.Add(this); }
-		}
+            Reset();
+            PacketPool.Insert(this);
+        }
 	}
 }

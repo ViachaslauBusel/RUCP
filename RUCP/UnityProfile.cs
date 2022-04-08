@@ -26,6 +26,7 @@ namespace RUCP
                 if (m_pipeline.TryDequeue(out Packet packet))
                 {
                     m_handlersStorage.GetHandler(packet.ReadType())?.Invoke(packet);
+                    packet.Dispose();
                 }
                 else return;
             }

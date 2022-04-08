@@ -14,23 +14,22 @@ namespace RUCP
     internal class RemoteServer : IServer
     {
         private Client m_master;
-        private volatile bool work = true;
-        private UDPSocket m_socket;
+        private ISocket m_socket;
         private Resender m_resender;
         private CheckingConnections m_cheking;
-        public UDPSocket Socket => m_socket;
+        public ISocket Socket => m_socket;
 
         public Resender Resender => m_resender;
 
-        internal RemoteServer(Client client, IPEndPoint iPEndPoint)
+        internal RemoteServer(Client client, IPEndPoint iPEndPoint, bool networkEmulator = false)
         {
-            m_socket = UDPSocket.CreateSocket();
+            m_socket = networkEmulator ? NetworkEmulator.CreateNetworkEmulatorSocket() : UDPSocket.CreateSocket();
             m_socket.Connect(iPEndPoint);
 
             m_master = client;
             //Запуск потока переотправки потеряных пакетов
             m_resender = Resender.Start(this);
-            //Запуск потока проверки соединений
+            //Запуск потока проверки соединения
             m_cheking = CheckingConnections.Start(this);
 
             m_cheking.InsertClient(client);

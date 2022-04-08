@@ -19,10 +19,11 @@ namespace RUCP.Transmitter
 				//Если связь с клиентом не установлена 
 				if (!client.isConnected())
 				{
-					//Прием ответа от сервера на открытие подключение
 					if (client.isRemoteHost)
 					{
-						client.OpenConnection();
+						//Прием ответа от сервера на открытие подключение
+						if (packet.Channel == Channel.Connection)
+						{ client.OpenConnection(); }
 					}
 					else
 					{
@@ -49,13 +50,14 @@ namespace RUCP.Transmitter
 								confirmPacket.Send();
 
 							}
-							return;
 						}
 						else//Если получен пакет без установленной связи, отправить этому клиенту команду на отключения
 						{
 							client.Disconnect();
 						}
 					}
+					packet.Dispose();
+					return;
 				}
 
 				//Package processing
@@ -63,13 +65,16 @@ namespace RUCP.Transmitter
 				{
 
 					case Channel.ReliableACK://Confirmation of acceptance of the package by the other side
-						client.ConfirmReliableACK(packet.ReadNumber());
+						client.ConfirmReliableACK(packet.Sequence);
+						packet.Dispose();
 						break;
 					case Channel.QueueACK://Confirmation of acceptance of the package by the other side
-						client.ConfirmQueueACK(packet.ReadNumber());
+						client.ConfirmQueueACK(packet.Sequence);
+						packet.Dispose();
 						break;
 					case Channel.DiscardACK://Confirmation of acceptance of the package by the other side
-						client.ConfirmDiscardACK(packet.ReadNumber());
+						client.ConfirmDiscardACK(packet.Sequence);
+						packet.Dispose();
 						break;
 
 
@@ -83,11 +88,13 @@ namespace RUCP.Transmitter
 							client.CryptographerRSA.Encrypt(confirmPacket);
 							confirmPacket.Send();
 						}
+						packet.Dispose();
 						break;
 
 					case Channel.Disconnect:
 						//	System.Console.WriteLine("client Disconnect");
 						client.CloseConnection(false);
+						packet.Dispose();
 						break;
 
 					case Channel.Reliable:
