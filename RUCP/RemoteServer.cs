@@ -1,9 +1,7 @@
 ﻿using RUCP.Transmitter;
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 
 namespace RUCP
@@ -70,7 +68,8 @@ namespace RUCP
         /// </summary>
         private void Connector(Client client)
         {
-            Packet packet = Packet.Create(Channel.Connection);
+            Packet packet = Packet.Create();
+            packet.TechnicalChannel = TechnicalChannel.Connection;
             packet.WriteFloat(Config.VESRSION);
             client.CryptographerRSA.WritePublicKey(packet);
             client.CryptographerRSA.Encrypt(packet);

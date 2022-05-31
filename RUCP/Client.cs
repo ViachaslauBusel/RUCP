@@ -142,7 +142,10 @@ namespace RUCP
 		/// </summary>
 		internal void Disconnect()
         {
-            Packet.Create(this, Channel.Disconnect).Send();
+            Packet packet = Packet.Create();
+            packet.TechnicalChannel = TechnicalChannel.Disconnect;
+            packet.InitClient(this);
+            packet.Send();
         }
 
         //Подтверждение о принятии пакета клиентом
@@ -172,9 +175,11 @@ namespace RUCP
         }
         private void SendACK(Packet packet, int channel)
         {
-            Packet packet1 = Packet.Create(packet.Client, channel);
-            packet1.Sequence = packet.Sequence;
-            packet1.Send();
+            Packet ack = Packet.Create();
+            ack.InitClient(packet.Client);
+            ack.TechnicalChannel = channel;
+            ack.Sequence = packet.Sequence;
+            ack.Send();
         }
         //Обработка пакетов
         internal void ProcessReliable(Packet packet)
@@ -183,7 +188,7 @@ namespace RUCP
             if (m_bufferReliable.Check(packet))
             {
                 //Отправка ACK>>
-                SendACK(packet, Channel.ReliableACK);
+                SendACK(packet, TechnicalChannel.ReliableACK);
                 //Отправка ACK<<
             }
 
@@ -194,7 +199,7 @@ namespace RUCP
             if (m_bufferQueue.Check(packet))
             {
                 //Отправка ACK>>
-                SendACK(packet, Channel.QueueACK);
+                SendACK(packet, TechnicalChannel.QueueACK);
                 //Отправка ACK<<
             }
         }
@@ -204,7 +209,7 @@ namespace RUCP
             if (m_bufferDiscard.Check(packet))
             {
                 //Отправка ACK>>
-                SendACK(packet, Channel.DiscardACK);
+                SendACK(packet, TechnicalChannel.DiscardACK);
                 //Отправка ACK<<
             }
         }

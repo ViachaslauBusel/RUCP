@@ -55,10 +55,12 @@ namespace RUCP
 		/// <summary>
 		/// Возврощает канал по которому будет\был передан пакет
 		/// </summary>
-		public int Channel
+		public Channel Channel => (Channel)TechnicalChannel;
+
+		internal int TechnicalChannel 
 		{
-			get => m_data[0] & 0b0111_1111;
-			private set { m_data[0] = (byte)(value | (m_data[0] & 0b1000_0000)); }
+			get => (m_data[0] & 0b0111_1111);
+		    set { m_data[0] = (byte)(value | (m_data[0] & 0b1000_0000)); }
 		}
 
 		/// <summary>
@@ -75,13 +77,15 @@ namespace RUCP
             get => BitConverter.ToUInt16(m_data, 3);
         }
 
+      
 
 
 
-		/// <summary>
-		/// Записывает тип пакета в заголовок
-		/// </summary>
-		unsafe public void WriteType(short type)
+
+        /// <summary>
+        /// Записывает тип пакета в заголовок
+        /// </summary>
+        unsafe public void WriteType(short type)
 		{
 			fixed (byte* d = m_data)
 			{ Buffer.MemoryCopy(&type, d + 1, 2, 2); }
@@ -106,13 +110,13 @@ namespace RUCP
 
 
 
-		private Packet(Client client, int channel)
+		private Packet(Client client, Channel channel)
 		{
 
 			m_data = new byte[DATA_SIZE];
 			Reset();
 			this.Client = client;
-			this.Channel = channel;
+			this.TechnicalChannel = (int)channel;
 
 		}
 		private Packet()
@@ -136,16 +140,16 @@ namespace RUCP
 		/// </summary>
 		/// <param name="channel"></param>
 		/// <returns></returns>
-		public static Packet Create(int channel) => Create(null, channel);
+		public static Packet Create(Channel channel) => Create(null, channel);
 		/// <summary>
 		/// Creates a packet with the channel through which it will be delivered
 		/// </summary>
-		public static Packet Create(Client client, int channel)
+		public static Packet Create(Client client, Channel channel)
 		{
             if (PacketPool.TryTake(out Packet packet))
             {
                 packet.Client = client;
-                packet.Channel = channel;
+                packet.TechnicalChannel = (int)channel;
                 return packet;
             }
             return new Packet(client, channel);
