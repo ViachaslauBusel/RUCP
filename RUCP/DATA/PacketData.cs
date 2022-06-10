@@ -9,15 +9,15 @@ namespace RUCP.DATA
         /// <summary>
         /// Длина заголовка пакета
         /// 1 байт - 1 бит флаг зашифровано ли содержимое пакета. Остальные байты канал пакета
-        /// 2-3 байт - Тип пакета
-        /// 4-5 байт - Порядковый номер пакета
+        /// 2-3 байт - Тип пакета (Opcode)
+        /// 4-5 байт - Порядковый номер пакета(Sequence)
         /// </summary>
         internal const int HEADER_SIZE = 5;
         /// <summary>
         /// Buffer size for storing data to send including header
         /// MTU — (Max IP Header Size) — (UDP Header Size) - (RUCP Header Size) = 1500 — 60 — 8 - 5 = 1427 bytes. MTU (for Ethernet by default 1500 bytes)
         /// </summary>
-        internal const int DATA_SIZE = 1_300;
+        internal const int DATA_SIZE = 1_400;
         /// <summary>
         /// The size of the increased buffer for storing data for sending, including the header
         /// Theoretically, the maximum data size is 65535 bytes. IPv4 - 65507 (in addition to 8 bytes for the UDP header, another 20 is required for the IP header).
@@ -31,6 +31,8 @@ namespace RUCP.DATA
         protected int m_index = 0;
         /// <summary>Number of bytes used in buffer by data</summary>
         protected int m_realLength;
+        protected Access m_dataAccess = Access.Lock;
+
 
 
 
@@ -44,8 +46,14 @@ namespace RUCP.DATA
         /// <summary>The number of bytes written to the packet, not including the header</summary>
         public int WrittenBytes => m_realLength - HEADER_SIZE;
 
+        
 
-        internal void InitData(int length) { m_realLength = length; }
+
+        internal void InitData(int length) 
+        { 
+            m_realLength = length;
+            m_dataAccess = Access.Read;
+        }
 
     }
 }

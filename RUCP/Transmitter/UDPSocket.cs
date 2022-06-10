@@ -10,6 +10,7 @@ namespace RUCP.Transmitter
     {
         private Socket m_socket = null;
         private bool connection = false;
+        private Object m_locker = new Object();
 
         public int AvailableBytes => m_socket.Available;
 
@@ -39,21 +40,30 @@ namespace RUCP.Transmitter
 
         public void SendTo(Packet packet, IPEndPoint remoteAdress)
         {
-            if (connection) { m_socket.Send(packet.Data, packet.Length, SocketFlags.None); }
-            else { m_socket.SendTo(packet.Data, packet.Length, SocketFlags.None, remoteAdress); }
+           // lock (m_locker)
+            {
+                if (connection) { m_socket.Send(packet.Data, packet.Length, SocketFlags.None); }
+                else { m_socket.SendTo(packet.Data, packet.Length, SocketFlags.None, remoteAdress); }
+            }
         }
         public void Send(Packet packet)
         {
-            m_socket.Send(packet.Data, packet.Length, SocketFlags.None);
+         //   lock (m_locker)
+            {
+                m_socket.Send(packet.Data, packet.Length, SocketFlags.None);
+            }
         }
         public void SendTo(byte[] data, int size, IPEndPoint remoteAdress)
         {
-            m_socket.SendTo(data, size, SocketFlags.None, remoteAdress);
+          //  lock (m_locker)
+            {
+                m_socket.SendTo(data, size, SocketFlags.None, remoteAdress);
+            }
         }
 
         public int ReceiveFrom(byte[] buffer, ref EndPoint endPoint)
         { 
-            return m_socket.ReceiveFrom(buffer, ref endPoint);
+            return m_socket.ReceiveFrom(buffer, 0, buffer.Length, SocketFlags.None, ref endPoint);
         }
 
 

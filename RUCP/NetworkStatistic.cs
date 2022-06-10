@@ -4,7 +4,7 @@ using System.Text;
 
 namespace RUCP
 {
-    public class NetworkInfo
+    public class NetworkStatistic
     {
         /// <summary>Среднее время колебаний задержек между отправкой пакета и получении подтверждения об доставке пакета</summary>
         private int m_devRTT = 0;
@@ -71,7 +71,7 @@ namespace RUCP
         /// <summary>
         /// Время до повторной отправки пакета при патери пакетов
         /// </summary>
-        internal int GetTimeoutInterval() => m_estimatedRTT + 3 * ((m_devRTT < 4) ? 4 : m_devRTT);
+        internal int GetTimeoutInterval() => m_estimatedRTT + 5 * ((m_devRTT < 4) ? 4 : m_devRTT);
 
         public int Ping
         {

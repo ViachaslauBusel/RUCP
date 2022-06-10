@@ -10,9 +10,6 @@ namespace RUCP.Transmitter
 		internal static void Process(IServer server, Packet packet)
 		{
 
-			try
-			{
-
 			
 				Client client = packet.Client;  //Получаем оброботчик(Сокет) конкретного клиента
 
@@ -35,7 +32,7 @@ namespace RUCP.Transmitter
 							float versionClient = packet.ReadFloat();
 							if (versionClient < Config.MIN_SUPPORTED_VERSION) { return; }
 
-							if (server.Connect(client))
+							if (server.AddClient(client))
 							{
 
 								client.OpenConnection();//If the connection was successful
@@ -55,7 +52,7 @@ namespace RUCP.Transmitter
 						}
 						else//Если получен пакет без установленной связи, отправить этому клиенту команду на отключения
 						{
-							client.Disconnect();
+							client.SendDisconnectCMD();
 						}
 					}
 					packet.Dispose();
@@ -116,13 +113,6 @@ namespace RUCP.Transmitter
 						client.HandlerPack(packet);
 						break;
 				}
-
-			}
-			catch (Exception e)
-			{
-				server.CallException(e);
-			}
-			//	}
 
 		}
 	}

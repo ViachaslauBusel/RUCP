@@ -55,10 +55,8 @@ namespace RUCP.ServerSide
 			return m_list_client.TryRemove(client.ID, out Client _c);
 		}
 
-		public int online()
-		{
-			return m_list_client.Count;
-		}
+		public int Count => m_list_client.Count;
+		
 
         public IEnumerator<Client> GetEnumerator() => m_list_client.Values.GetEnumerator();
 

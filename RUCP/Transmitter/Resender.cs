@@ -39,21 +39,23 @@ namespace RUCP.Transmitter
 
 
                     //If the first packet in the queue is confirmed or the client is disconnected, remove it from the queue and go to the next
-                    if (packet.ACK || !packet.Client.isConnected()) { packet.Dispose(); continue; }
+                    if (packet.ACK || !packet.Client.isConnected()) { packet.ForcedDispose(); continue; }
 
-                    //If the waiting time for confirmation of receipt of the package by the client exceeds 6 seconds, disconnect the client
-                    if (packet.CalculatePing() > 10_000)
+                    //If the waiting time for confirmation of receipt of the package by the client exceeds timeout, disconnect the client
+                    if (packet.CalculatePing() > 100_000)
                     {
-                        Console.WriteLine($"[{m_master.GetType()}]Disconect:{packet.m_sendCicle}");
-                        //  Log.Warn($"Lost connection, remote node does not respond for: {DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.SendTime}ms " +
-                        //           $"timeout:{packet.Client.GetTimeout()}ms");
+                        Console.WriteLine($"[{m_master.GetType()}]Disconect time:{packet.CalculatePing()}, cicle:{packet.m_sendCicle} \n" +
+                            $"SentPackets:{packet.Client.Network.SentPackets}, ResentPackets:{packet.Client.Network.ResentPackets}");
 
                         packet.Client.CloseConnection();
-                        packet.Dispose();
+                    //    packet.ForcedDispose();
                         continue;
                     }
+                  //  Console.WriteLine("Recend packet");
+                    m_master.Socket.SendTo(packet, packet.Client.RemoteAddress);
+                    packet.Client.Network.ResentPackets++;
+                   // Console.WriteLine($"пакет:[{packet.Sequence}]->переотправка");
 
-                    m_master.Socket.SendTo(packet, packet.Client.RemoteAdress);
                     Add(packet); //Запись на переотправку
 
                 }

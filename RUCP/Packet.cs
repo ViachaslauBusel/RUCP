@@ -12,10 +12,10 @@ namespace RUCP
 	//	Normal,
 	//	Large
 	//}
-	public class Packet : PacketData, IDelayed, IComparable, IComparable<Packet>
+	public partial class Packet : PacketData, IDelayed, IComparable, IComparable<Packet>
     {
 
-		public Packet Next { get; set; } = null;
+
 		internal volatile int m_sendCicle = 0;
 		private volatile bool m_ack = false;
 		/// <summary>Время отправки пакета</summary>
@@ -39,8 +39,12 @@ namespace RUCP
 		internal void WriteSendTime()
 		{
 			if (m_sendCicle++ == 0) m_sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-			m_resendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.Network.GetTimeoutInterval();
+			m_resendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.Network.GetTimeoutInterval() * m_sendCicle;
 		}
+		/// <summary>
+		/// Time elapsed since the packet was sent
+		/// </summary>
+		/// <returns></returns>
 		internal int CalculatePing()
 		{
 			return (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - m_sendTime);
@@ -146,7 +150,7 @@ namespace RUCP
 		/// </summary>
 		public static Packet Create(Client client, Channel channel)
 		{
-            if (PacketPool.TryTake(out Packet packet))
+            if (TryTakeFromPool(out Packet packet))
             {
                 packet.Client = client;
                 packet.TechnicalChannel = (int)channel;
@@ -162,7 +166,7 @@ namespace RUCP
 		/// <returns></returns>
 		public static Packet Create(Client client, Packet copy_packet)
 		{
-            if (PacketPool.TryTake(out Packet packet))
+            if (TryTakeFromPool(out Packet packet))
             {
                 packet.Copy(client, copy_packet);
                 return packet;
@@ -171,7 +175,7 @@ namespace RUCP
 		}
 		internal static Packet Create()
 		{
-            if (PacketPool.TryTake(out Packet packet))
+            if (TryTakeFromPool(out Packet packet))
             {
                 return packet;
             }
@@ -181,6 +185,7 @@ namespace RUCP
 
 		public void Reset()
 		{
+			m_dataAccess = Access.Write;
 			Client = null;
 			m_ack = false;
 			m_sendCicle = 0;
@@ -190,39 +195,36 @@ namespace RUCP
 
 		public void Send()
 		{
+			if (Client == null)
+			{
+				throw new Exception("The packet cannot be sent, the client is not specified");
+			}
+			if (m_sendCicle != 0 || m_dataAccess == Access.Lock)
+			{
+				throw new Exception($"Packet is blocked, sending is not possible, m_sendCicle:{m_sendCicle}, m_dataAccess:{m_dataAccess}");
+			}
 
 
-				if (Client == null)
-				{
-					throw new Exception("The packet cannot be sent, the client is not specified");
-				}
-				if (m_sendCicle != 0)
-				{
-					throw new Exception("Packet is blocked, sending is not possible");
-				}
 
-	
 			bool dispose = false;
 
-				if (Encrypt) Client.CryptographerAES.Encrypt(this);
+			if (Encrypt) Client.CryptographerAES.Encrypt(this);
 
-				//Вставка в буфер отправленных пакетов для дальнейшего подтверждения об успешной доставки пакета
-				if (Client.InsertBuffer(this))
-				{ Client.Server.Resender.Add(this); }//Record for re-sending
-				else dispose = true;
+			//Вставка в буфер отправленных пакетов для дальнейшего подтверждения об успешной доставки пакета
+			if (Client.InsertBuffer(this))
+			{
+				//Record for re-sending
+				Client.Server.Resender.Add(this);
+				m_dataAccess = Access.Lock;
+			}
+			else { dispose = true; }
 
-				Client.Server.Socket.SendTo(this, Client.RemoteAdress);
+			Client.Server.Socket.SendTo(this, Client.RemoteAddress);
 
-				if (dispose) Dispose();
-		
+
+			if (dispose) Dispose();
+
 		}
-		/// <summary>
-		/// Return the packet to the packet pool. Can't be used on the sent packet!!!
-		/// </summary>
-		public void Dispose()//TODO если два раза вызвать на одном и том же пакете, то возникнет баг совместного использование одного пакета
-		{
-            Reset();
-            PacketPool.Insert(this);
-        }
+		
 	}
 }

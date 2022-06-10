@@ -17,12 +17,12 @@ namespace RUCP
         private IServer m_server;
         private IProfile m_profile;
         private IPEndPoint m_remoteAdress;
-        private NetworkInfo m_network = new NetworkInfo();
+        private NetworkStatistic m_network = new NetworkStatistic();
         private QueueBuffer m_bufferQueue;
         private ReliableBuffer m_bufferReliable;
         private DiscardBuffer m_bufferDiscard;
         private Object m_locker = new Object();
-
+        public Task m_taskPipeline;
         public long ID { get; private set; }
 
        
@@ -34,8 +34,8 @@ namespace RUCP
 
         internal IServer Server => m_server;
         /// <summary>Адрес удаленного узла с которым соединён этот клиент</summary>
-        public IPEndPoint RemoteAdress => m_remoteAdress;
-        public NetworkInfo Network => m_network;    
+        public IPEndPoint RemoteAddress => m_remoteAdress;
+        public NetworkStatistic Network => m_network;    
         public IProfile Profile => m_profile;
 
 
@@ -56,7 +56,6 @@ namespace RUCP
         public Client()
         {
             isRemoteHost = true;
-            m_profile = new LocalProfile();
             m_bufferReliable = new ReliableBuffer(this, 512);
             m_bufferQueue = new QueueBuffer(this, 512);
             m_bufferDiscard = new DiscardBuffer(this, 512);
@@ -73,9 +72,9 @@ namespace RUCP
             ID = SocketInformer.GetID(m_remoteAdress);
         }
 
-        public void SetProfile(IProfile profile)
+        public void SetHandler(Func<IProfile> getHandler)
         {
-            m_profile = profile;
+            m_profile = getHandler.Invoke();
         }
 
         internal bool isConnected() => m_network.Status == NetworkStatus.СONNECTED;
@@ -98,6 +97,7 @@ namespace RUCP
         {
             if (packet.Encrypt) CryptographerAES.Decrypt(packet);
             m_profile.ChannelRead(packet);
+         
         }
         internal void checkingConnection()
         {
@@ -106,15 +106,16 @@ namespace RUCP
 
         public void Close()
         {
-            CloseConnection(true);
+            CloseConnection(sendDisconnectCMD: true);
         }
         /// <summary>
         /// Removing a client from the list of connections and calling the CloseConnection method in the profile
         /// </summary>
-        public void CloseConnection(bool disconnect = true)
+        internal void CloseConnection(bool sendDisconnectCMD = true)
         {
-            if (disconnect)
-                Disconnect();
+            if (sendDisconnectCMD)
+            { SendDisconnectCMD(); }
+           
             CloseIf(NetworkStatus.СONNECTED);
         }
         internal void CloseIf(NetworkStatus status)
@@ -123,8 +124,8 @@ namespace RUCP
             {
                 if (m_network.Status == status)
                 {
-                    m_server.Disconnect(this);
-                    m_profile.CloseConnection();
+                    m_server.RemoveClient(this);
+                    if (m_network.Status == NetworkStatus.СONNECTED) { m_profile.CloseConnection(); }
 
                     m_network.Status = NetworkStatus.CLOSED;
 
@@ -137,21 +138,43 @@ namespace RUCP
                 }
             }
         }
+
+        internal void InsertTask(Action act)
+        {
+            Task task = null;
+            if (m_taskPipeline != null)
+            {
+                task = m_taskPipeline.ContinueWith((t) => act?.Invoke());
+            }
+            else
+            {
+                task = Task.Run(act);
+            }
+            m_taskPipeline = task;
+        }
+
         /// <summary>
-		/// Отсылает клиенту команду на отключения
-		/// </summary>
-		internal void Disconnect()
+        /// Отсылает клиенту команду на отключения
+        /// </summary>
+        internal void SendDisconnectCMD()
         {
             Packet packet = Packet.Create();
             packet.TechnicalChannel = TechnicalChannel.Disconnect;
             packet.InitClient(this);
             packet.Send();
         }
-
+        private void SendACK(Packet packet, int channel)
+        {
+            Packet ack = Packet.Create();
+            ack.InitClient(this);
+            ack.TechnicalChannel = channel;
+            ack.Sequence = packet.Sequence;
+            ack.Send();
+        }
         //Подтверждение о принятии пакета клиентом
-        internal void ConfirmReliableACK(int number) { m_bufferReliable.ConfirmAsk(number); }
-        internal void ConfirmQueueACK(int number) { m_bufferQueue.ConfirmAsk(number); }
-        internal void ConfirmDiscardACK(int number) { m_bufferDiscard.ConfirmAsk(number); }
+        internal void ConfirmReliableACK(int sequence) { m_bufferReliable.ConfirmAsk(sequence); }
+        internal void ConfirmQueueACK(int sequence) { m_bufferQueue.ConfirmAsk(sequence); }
+        internal void ConfirmDiscardACK(int sequence) { m_bufferDiscard.ConfirmAsk(sequence); }
 
         /// <summary>
         /// Вставка в буффер не подтвержденных пакетов
@@ -173,14 +196,7 @@ namespace RUCP
                 default: return false;
             }
         }
-        private void SendACK(Packet packet, int channel)
-        {
-            Packet ack = Packet.Create();
-            ack.InitClient(packet.Client);
-            ack.TechnicalChannel = channel;
-            ack.Sequence = packet.Sequence;
-            ack.Send();
-        }
+       
         //Обработка пакетов
         internal void ProcessReliable(Packet packet)
         {

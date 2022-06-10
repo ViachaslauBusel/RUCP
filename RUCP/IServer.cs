@@ -11,8 +11,8 @@ namespace RUCP
         Resender Resender { get; }
 
         void CallException(Exception exception);
-        bool Connect(Client client);
-        bool Disconnect(Client client);
+        bool AddClient(Client client);
+        bool RemoveClient(Client client);
         IProfile CreateProfile();
     }
 }

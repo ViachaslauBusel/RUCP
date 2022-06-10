@@ -23,10 +23,11 @@ namespace RUCP
 		private int m_port;
 		private bool m_asyncPacketReading = false;
 		private bool m_networkEmulator = false;
+		private volatile bool m_work = false;
 
 
-		private volatile int m_processPackets = 0;
-		private volatile int m_completedPackets = 0;
+	//	private volatile int m_processPackets = 0;
+	//	private volatile int m_completedPackets = 0;
 
 		/// <summary> Throwing exceptions received in the server</summary>
 		public event Action<Exception> throwingExceptions;
@@ -40,7 +41,7 @@ namespace RUCP
 
 		void IServer.CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
 		internal void CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
-		bool IServer.Connect(Client client)
+		bool IServer.AddClient(Client client)
         {
             if (m_clients.AddClient(client))
             {
@@ -49,7 +50,12 @@ namespace RUCP
             }
 			return false;
         }
-		bool IServer.Disconnect(Client client)
+		/// <summary>
+		/// Удаляет клиента из списка клиентов
+		/// </summary>
+		/// <param name="client"></param>
+		/// <returns></returns>
+		bool IServer.RemoveClient(Client client)
         {
 			return m_clients.RemoveClient(client);
         }
@@ -74,7 +80,12 @@ namespace RUCP
 		{
 			try
 			{
-				System.Console.WriteLine($"RUCP ver.{Config.VESRSION.ToString("0.000")}");
+				if (m_work) throw new Exception("The server is already in running mode");
+				m_work = true;
+				System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
+				System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location);
+				string version = fvi.FileVersion;
+				System.Console.WriteLine($"RUCP ver.{version}");
 				m_asyncPacketReading = asyncPacketReading;
 				//	buffer = new BlockingCollection<Packet>(new ConcurrentQueue<Packet>());
 				//Создание сокета по порту для считывание данных
@@ -103,7 +114,7 @@ namespace RUCP
 			}
 			catch (Exception e)
 			{
-				System.Console.WriteLine("Failed to start the server");
+				System.Console.WriteLine($"Failed to start the server: {e.Message}");
 				CallException(e);
 			}
 		}
@@ -133,7 +144,7 @@ namespace RUCP
 				catch (SocketException e)
 				{
 					if (e.ErrorCode == 10004)
-						break;
+						break;//Exit
 					if (e.ErrorCode == 10054)
 						continue;
 					CallException(e);
@@ -149,7 +160,7 @@ namespace RUCP
 		private void Run()
 		{
 			EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
-			while (true)
+			while (m_work)
 			{
 				try
 				{   
@@ -158,49 +169,55 @@ namespace RUCP
 
 					//Считывание датаграм
 					int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref senderRemote);
+					Client client = m_clients.GetClient((IPEndPoint)senderRemote);
 					packet.InitData(receiveBytes);
-					packet.InitClient(m_clients.GetClient((IPEndPoint)senderRemote));
+					packet.InitClient(client);
 
-					m_processPackets++;
-					Task.Run(() => {
-						PacketHandler.Process(this, packet);
-						Interlocked.Increment(ref m_completedPackets);
-					});
+					//m_processPackets++;
 
+					client.InsertTask(() => PacketHandler.Process(this, packet));
+					
+
+					
 				}
-				catch (SocketException e)
-				{
-					if (e.ErrorCode == 10004)
-						break;
-					if (e.ErrorCode == 10054)
-						continue;
-					CallException(e);
+                catch (SocketException e)
+                {
+					//if (e.ErrorCode != 10004 && e.ErrorCode != 4)
+					{ CallException(e); }
 				}
-				catch (Exception e)
+                catch (Exception e)
 				{
-					CallException(e);
+					  CallException(e); 
 				}
 			}
 
 		}
-
+		/// <summary>
+		/// Shuts down the server, disconnects all clients
+		/// </summary>
 		public void Stop()
 		{
-			m_socket.Close();
-
-
-
-			while (m_processPackets != m_completedPackets) { Thread.Sleep(1); }
-			//Console.WriteLine($"process: {processPackets} completed: {completedPackets}");
-
-			foreach (Client client in m_clients)
+			try
 			{
-				//Отправка клиенту команды на отключение и очистка списка клиентов
-				client.CloseConnection();
+				m_work = false;
+				
+				foreach (Client client in m_clients)
+				{
+					//Отправка клиенту команды на отключение и очистка списка клиентов
+					client.CloseConnection();
+				}
+
+				m_socket.Close();
+
+			} catch (Exception e)
+            {
+				CallException(e);
+            }
+			finally 
+			{
+				System.Console.WriteLine($"RUCP shutdown.");
 			}
-
-
-			System.Console.WriteLine("RUCP shutdown");
+			
 		}
 
       

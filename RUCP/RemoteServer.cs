@@ -46,7 +46,7 @@ namespace RUCP
 
         }
 
-        public bool Connect(Client client)
+        public bool AddClient(Client client)
         {
           
             return true;
@@ -57,7 +57,7 @@ namespace RUCP
           return null;
         }
 
-        public bool Disconnect(Client client)
+        public bool RemoveClient(Client client)
         {
             return true;
         }

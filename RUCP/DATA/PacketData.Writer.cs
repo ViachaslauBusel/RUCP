@@ -8,6 +8,7 @@ namespace RUCP.DATA
     {
         unsafe private void WriteValue(void* value, int len)
         {
+            if (m_dataAccess != Access.Write) throw new Exception("Packet not writable");
             fixed (byte* d = m_data)
             { Buffer.MemoryCopy(value, d + m_index, len, len); }
             m_realLength = m_index += len;
@@ -18,6 +19,7 @@ namespace RUCP.DATA
         /// </summary>
         public void WriteBytes(byte[] bytes)
         {
+            if (m_dataAccess != Access.Write) throw new Exception("Packet not writable");
             WriteShort((short)bytes.Length);
             Array.Copy(bytes, 0, m_data, m_index, bytes.Length);
             m_realLength = m_index += bytes.Length;
@@ -46,6 +48,7 @@ namespace RUCP.DATA
         }
         public ref byte WriteByte(byte value)
         {
+            if (m_dataAccess != Access.Write) throw new Exception("Packet not writable");
             m_data[m_index++] = value;
             m_realLength = m_index;
             return ref m_data[m_index - 1];
@@ -53,6 +56,7 @@ namespace RUCP.DATA
 
         public void WriteBool(bool value)
         {
+            if (m_dataAccess != Access.Write) throw new Exception("Packet not writable");
             m_data[m_index++] = (byte)(value ? 1 : 0);
             m_realLength = m_index;
         }
@@ -62,14 +66,6 @@ namespace RUCP.DATA
             byte[] bytes = Encoding.UTF8.GetBytes(value);
             WriteBytes(bytes);
         }
-
-        /*  public void Write(float f) => WriteFloat(f);
-          public void Write(int i) => WriteInt(i);
-          public void Write(long l) => WriteLong(l);
-          public void Write(short s) => WriteShort(s);
-          public void Write(byte b) => WriteByte(b);
-          public void Write(bool b) => WriteBool(b);
-          public void Write(string s) => WriteString(s);*/
 
     }
 }

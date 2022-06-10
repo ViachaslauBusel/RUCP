@@ -27,14 +27,16 @@ namespace RUCP.Channels
 		/// <summary>
 		/// Подтверждение о принятии пакета клиентом
 		/// </summary>
-		/// <param name="number"></param>
-		public void ConfirmAsk(int number)
+		/// <param name="sequence"></param>
+		public void ConfirmAsk(int sequence)
 		{
 			lock (m_sentPackages)
 			{
-				int index = number % m_sentPackages.Length;
-				if (m_sentPackages[index] != null && m_sentPackages[index].Sequence == number)
+				
+				int index = sequence % m_sentPackages.Length;
+				if (m_sentPackages[index] != null && m_sentPackages[index].Sequence == sequence)
 				{
+					//Console.WriteLine($"пакет:[{sequence}]->ACK подвержден");
 					m_sentPackages[index].ACK = true;
 					m_sentPackages[index].Client.Network.Ping = m_sentPackages[index].CalculatePing();
 					m_sentPackages[index] = null;
@@ -59,6 +61,9 @@ namespace RUCP.Channels
 				m_sentPackages[index] = packet;
 
 				m_numberSent = (m_numberSent + 1) % SEQUENCE_WINDOW_SIZE;
+
+				packet.Client.Network.SentPackets++;
+				//Console.WriteLine($"пакет:[{packet.Sequence}]->отправлен");
 			}
 		}
 
