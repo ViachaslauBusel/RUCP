@@ -1,18 +1,15 @@
-﻿using RUCP.Cryptography;
+﻿using RUCP.Channels;
+using RUCP.Cryptography;
 using RUCP.ServerSide;
 using RUCP.Transmitter;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace RUCP
 {
-    public class Server : IServer
+	public class Server : IServer
     {
 		private Func<IProfile> m_createProfile;
 
@@ -20,10 +17,12 @@ namespace RUCP
 		private ClientList m_clients;
 		private Resender m_resender;
 		private CheckingConnections m_cheking;
+		private TaskPool m_taskPool;
 		private int m_port;
-		private bool m_asyncPacketReading = false;
-		private bool m_networkEmulator = false;
+	//	private bool m_networkEmulator = false;
 		private volatile bool m_work = false;
+		private ServerOptions m_options;
+
 
 
 	//	private volatile int m_processPackets = 0;
@@ -32,12 +31,12 @@ namespace RUCP
 		/// <summary> Throwing exceptions received in the server</summary>
 		public event Action<Exception> throwingExceptions;
 
-
-
 		
 		//internal void CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
 		ISocket IServer.Socket => m_socket;
 		Resender IServer.Resender => m_resender;
+        TaskPool IServer.TaskPool => m_taskPool;
+        ServerOptions IServer.Options => m_options;
 
 		void IServer.CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
 		internal void CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
@@ -70,26 +69,32 @@ namespace RUCP
 			return m_createProfile.Invoke();
 		}
 
-		public Server(int port, bool networkEmulator = false)
+		public Server(int port)
 		{
 			this.m_port = port;
-			m_networkEmulator = networkEmulator;
+			//m_networkEmulator = networkEmulator;
 		}
 
-		public void Start(bool asyncPacketReading = true)
+		public void Start(ServerOptions options = null)
 		{
 			try
 			{
+				
+
 				if (m_work) throw new Exception("The server is already in running mode");
 				m_work = true;
+
+				if (options == null) options = new ServerOptions();
+
+				
 				System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
 				System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location);
 				string version = fvi.FileVersion;
 				System.Console.WriteLine($"RUCP ver.{version}");
-				m_asyncPacketReading = asyncPacketReading;
+				m_options = options.Clone();
 				//	buffer = new BlockingCollection<Packet>(new ConcurrentQueue<Packet>());
 				//Создание сокета по порту для считывание данных
-				m_socket = m_networkEmulator ? NetworkEmulator.CreateNetworkEmulatorSocket(m_port) : UDPSocket.CreateSocket(m_port);
+				m_socket =  UDPSocket.CreateSocket(receiveBufferSize: 3_145_728, sendBufferSize: 3_145_728, localPort: m_port);//m_networkEmulator ? NetworkEmulator.CreateNetworkEmulatorSocket(m_port) :
 
 				RSA.SetPrivateKey(ContainerRSAKey.LoadPrivateKey());
 
@@ -101,8 +106,9 @@ namespace RUCP
 				m_resender = Resender.Start(this);
 				//Запуск потока проверки соединений
 				m_cheking = CheckingConnections.Start(this);
+				m_taskPool = new TaskPool(m_options.MaxParallelism);
 
-				if (m_asyncPacketReading)
+				if (m_options.Mode == Mode.Automatic)
 				{
 					//Запуск потока считывание датаграмм
 					Thread server_th = new Thread(() => Run());
@@ -121,7 +127,7 @@ namespace RUCP
 
 		public void ProcessPacket()
         {
-			if (m_asyncPacketReading || m_socket == null) return;
+			if (m_options.Mode != Mode.Manual || m_socket == null) return;
 			int availableBytes = m_socket.AvailableBytes;
 			EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
 			while (availableBytes > 0)
@@ -138,7 +144,7 @@ namespace RUCP
 					
 
 						PacketHandler.Process(this, packet);
-
+					
 
 				}
 				catch (SocketException e)
@@ -175,7 +181,26 @@ namespace RUCP
 
 					//m_processPackets++;
 
-					client.InsertTask(() => PacketHandler.Process(this, packet));
+					client.InsertTask(() =>
+					{
+						try
+						{
+						
+							PacketHandler.Process(this, packet);
+						}
+						catch (BufferOverflowException)
+						{
+							CallException(new Exception($"The client:{client.ID} was disconnected due to a buffer overflow"));
+							client.Close();
+						}
+						catch (Exception e)
+						{
+							CallException(new Exception($"Client:{client.ID} was disconnected due to an unhandled exception"));
+							client.Close();
+							CallException(e);
+						}
+						
+					});
 					
 
 					
@@ -190,6 +215,7 @@ namespace RUCP
 					  CallException(e); 
 				}
 			}
+			m_socket.Close();
 
 		}
 		/// <summary>
@@ -207,7 +233,7 @@ namespace RUCP
 					client.CloseConnection();
 				}
 
-				m_socket.Close();
+				m_taskPool.Dispose();
 
 			} catch (Exception e)
             {

@@ -15,9 +15,17 @@ namespace RUCP
         private ISocket m_socket;
         private Resender m_resender;
         private CheckingConnections m_cheking;
+        private volatile bool m_work = true;
+        private long m_firstPing = -1;
+
+
         public ISocket Socket => m_socket;
 
         public Resender Resender => m_resender;
+
+        public TaskPool TaskPool => throw new NotImplementedException();
+
+        public ServerOptions Options { get; } = new ServerOptions();
 
         internal RemoteServer(Client client, IPEndPoint iPEndPoint, bool networkEmulator = false)
         {
@@ -39,16 +47,20 @@ namespace RUCP
 
             Thread th = new Thread(() => Connector(client));
             th.Start();
+
         }
 
         public void CallException(Exception exception)
         {
-
+            Console.Error.WriteLine(exception.ToString());
         }
 
         public bool AddClient(Client client)
         {
-          
+            if (m_firstPing == -1) return false;
+            int ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - m_firstPing);
+            m_firstPing = -1;
+            client.Statistic.InitPing(ping + 15);
             return true;
         }
 
@@ -59,6 +71,7 @@ namespace RUCP
 
         public bool RemoveClient(Client client)
         {
+            m_work = false;
             return true;
         }
 
@@ -69,22 +82,24 @@ namespace RUCP
         private void Connector(Client client)
         {
             Packet packet = Packet.Create();
+            packet.InitClient(client);
             packet.TechnicalChannel = TechnicalChannel.Connection;
             packet.WriteFloat(Config.VESRSION);
             client.CryptographerRSA.WritePublicKey(packet);
             client.CryptographerRSA.Encrypt(packet);
 
                 int max_cicle = 20;//10 сек ожидание подключения
-                long firstPing = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                while (client.Network.Status == NetworkStatus.LISTENING) //Ожидаем подключение
-                {
-                    if (--max_cicle < 0) {  return; }
-                    //Отпровляем пакет
-                    Socket.Send(packet);
+                m_firstPing = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            while (client.Statistic.Status == NetworkStatus.LISTENING) //Ожидаем подключение
+            {
+                if (--max_cicle < 0) { break; }
+                //Отпровляем пакет
+                Socket.Send(packet);
 
                 Thread.Sleep(500); //Ожидание пакета "подтверждение подключение" от сервера
-                }
-                //Закрыть если сервер так и не ответил
+            }
+            packet.Dispose();
+            //Закрыть если сервер так и не ответил
             client.CloseIf(NetworkStatus.LISTENING);
         }
 
@@ -92,10 +107,11 @@ namespace RUCP
         private void Listener()
         {
             EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
-            while (true)
+            while (m_work)
             {
                 try
-                {            //Создание нового пакета для хранение данных
+                {          
+                    //Создание нового пакета для хранение данных
                     Packet packet = Packet.Create();
 
                     //Считывание датаграм
@@ -103,21 +119,27 @@ namespace RUCP
                     packet.InitData(receiveBytes);
                     packet.InitClient(m_master);
 
+                //    Console.WriteLine($"remote host receive packet.ch{packet.TechnicalChannel}");
+
                     PacketHandler.Process(this, packet);
 
-
+                   
                 }
                 catch (SocketException e)
                 {
-                    if (e.ErrorCode == 10004)
-                        break;
-                    if (e.ErrorCode == 10054)
-                        continue;
+                    //if (e.ErrorCode == 10004)
+                    //    break;
+                    //if (e.ErrorCode == 10054)
+                    //    continue;
                     CallException(e);
+                    m_master.Close();
+                    CallException(new Exception($"Client:{m_master.ID} was disconnected due to an unhandled exception"));
                 }
                 catch (Exception e)
                 {
                     CallException(e);
+                    m_master.Close();
+                    CallException(new Exception($"Client:{m_master.ID} was disconnected due to an unhandled exception"));
                 }
             }
         }

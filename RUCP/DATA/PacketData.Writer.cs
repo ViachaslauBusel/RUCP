@@ -24,6 +24,14 @@ namespace RUCP.DATA
             Array.Copy(bytes, 0, m_data, m_index, bytes.Length);
             m_realLength = m_index += bytes.Length;
         }
+        internal void WriteBytes(byte[] data, int length)
+        {
+            if (m_dataAccess != Access.Write) throw new Exception("Packet not writable");
+            WriteShort((short)length);
+            Array.Copy(data, 0, m_data, m_index, length);
+            m_realLength = m_index += length;
+        }
+
         unsafe public void WriteFloat(float value)
         {
             WriteValue(&value, 4);

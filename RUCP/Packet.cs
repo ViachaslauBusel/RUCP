@@ -1,5 +1,6 @@
 ﻿using RUCP.Collections;
 using RUCP.DATA;
+using RUCP.Transmitter;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -24,8 +25,10 @@ namespace RUCP
 		private long m_resendTime;
 
 
-		/// <summary>Время повторной отправки пакета при неудачной попытке доставки</summary>
-		public long ResendTime => m_resendTime;
+
+
+        /// <summary>Время повторной отправки пакета при неудачной попытке доставки</summary>
+        public long ResendTime => m_resendTime;
 		public bool isBlock => m_sendCicle != 0;
 		internal bool ACK { get => m_ack; set => m_ack = value; }
 
@@ -38,14 +41,17 @@ namespace RUCP
 		/// </summary>
 		internal void WriteSendTime()
 		{
-			if (m_sendCicle++ == 0) m_sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-			m_resendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.Network.GetTimeoutInterval() * m_sendCicle;
+			if (m_sendCicle++ == 0) { m_sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); }
+
+			m_resendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.Statistic.GetTimeoutInterval() * m_sendCicle;
 		}
-		/// <summary>
-		/// Time elapsed since the packet was sent
-		/// </summary>
-		/// <returns></returns>
-		internal int CalculatePing()
+
+
+        /// <summary>
+        /// Time elapsed since the packet was sent
+        /// </summary>
+        /// <returns></returns>
+        internal int CalculatePing()
 		{
 			return (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - m_sendTime);
 		}
@@ -190,10 +196,12 @@ namespace RUCP
 			m_ack = false;
 			m_sendCicle = 0;
 			WriteType(0);
+			TechnicalChannel = 0;
+			Sequence = 0;
 			m_realLength = m_index = HEADER_SIZE;
 		}
 
-		public void Send()
+		internal void SendImmediately()
 		{
 			if (Client == null)
 			{
@@ -224,6 +232,38 @@ namespace RUCP
 
 			if (dispose) Dispose();
 
+		}
+
+		public NetStream Send()
+		{
+			if (Client == null)
+			{
+				throw new Exception("The packet cannot be sent, the client is not specified");
+			}
+
+			if (m_sendCicle != 0 || m_dataAccess == Access.Lock)
+			{
+				throw new Exception($"Packet is blocked, sending is not possible");
+			}
+
+			bool dispose = false;
+
+			if (Encrypt) Client.CryptographerAES.Encrypt(this);
+
+			//Вставка в буфер отправленных пакетов для дальнейшего подтверждения об успешной доставке пакета
+			if (Client.InsertBuffer(this))
+			{
+				//Record for re-sending
+				Client.Server.Resender.Add(this);
+				m_dataAccess = Access.Lock;
+			}
+			else { dispose = true; }
+
+			Client.Stream.Write(this);
+
+			NetStream stream = Client.Stream; 
+			if (dispose) Dispose();
+			return stream;
 		}
 		
 	}

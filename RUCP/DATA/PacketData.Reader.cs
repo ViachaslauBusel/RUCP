@@ -45,6 +45,17 @@ namespace RUCP.DATA
             m_index += length;
             return array;
         }
+        public int ReadBytesIn(byte[] data)
+        {
+            if (m_dataAccess != Access.Read) throw new Exception("Packet not readable");
+
+            int length = ReadShort();
+            Array.Copy(m_data, m_index, data, 0, length);
+
+            m_index += length;
+
+            return length;
+        }
 
         public int ReadByte()
         {

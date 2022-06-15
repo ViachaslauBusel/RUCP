@@ -3,10 +3,8 @@ using RUCP.Cryptography;
 using RUCP.Tools;
 using RUCP.Transmitter;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RUCP
@@ -17,25 +15,27 @@ namespace RUCP
         private IServer m_server;
         private IProfile m_profile;
         private IPEndPoint m_remoteAdress;
+        private NetStream m_stream;
         private NetworkStatistic m_network = new NetworkStatistic();
         private QueueBuffer m_bufferQueue;
         private ReliableBuffer m_bufferReliable;
         private DiscardBuffer m_bufferDiscard;
         private Object m_locker = new Object();
-        public Task m_taskPipeline;
+        private TaskPipeline m_taskPipeline;
         public long ID { get; private set; }
 
        
 
         /// <summary>false - этот клиент подключен к серверу на прямую. true - это удаленный  клиент, подключен к серверу через сеть</summary>
-        internal bool isRemoteHost { get; private set; }
+        public bool isRemoteHost { get; private set; }
         internal RSA CryptographerRSA { get; set; } = new RSA();
         internal AES CryptographerAES { get; set; } = new AES();
 
         internal IServer Server => m_server;
         /// <summary>Адрес удаленного узла с которым соединён этот клиент</summary>
         public IPEndPoint RemoteAddress => m_remoteAdress;
-        public NetworkStatistic Network => m_network;    
+        public NetStream Stream => m_stream;    
+        public NetworkStatistic Statistic => m_network;    
         public IProfile Profile => m_profile;
 
 
@@ -44,7 +44,9 @@ namespace RUCP
         {
             isRemoteHost = false;
             m_server = server;
+            m_taskPipeline = server.TaskPool.CreatePipeline();
             m_remoteAdress = adress;
+            m_stream = new NetStream(this);
            
             ID = SocketInformer.GetID(adress);
             m_profile = server.CreateProfile();
@@ -56,6 +58,7 @@ namespace RUCP
         public Client()
         {
             isRemoteHost = true;
+            m_stream = new NetStream(this);
             m_bufferReliable = new ReliableBuffer(this, 512);
             m_bufferQueue = new QueueBuffer(this, 512);
             m_bufferDiscard = new DiscardBuffer(this, 512);
@@ -141,16 +144,7 @@ namespace RUCP
 
         internal void InsertTask(Action act)
         {
-            Task task = null;
-            if (m_taskPipeline != null)
-            {
-                task = m_taskPipeline.ContinueWith((t) => act?.Invoke());
-            }
-            else
-            {
-                task = Task.Run(act);
-            }
-            m_taskPipeline = task;
+            m_taskPipeline.Insert(new Task(act));
         }
 
         /// <summary>
@@ -161,14 +155,14 @@ namespace RUCP
             Packet packet = Packet.Create();
             packet.TechnicalChannel = TechnicalChannel.Disconnect;
             packet.InitClient(this);
-            packet.Send();
+            packet.SendImmediately();
         }
-        private void SendACK(Packet packet, int channel)
+        private void SendACK(ushort sequence, int channel)
         {
             Packet ack = Packet.Create();
             ack.InitClient(this);
             ack.TechnicalChannel = channel;
-            ack.Sequence = packet.Sequence;
+            ack.Sequence = sequence;
             ack.Send();
         }
         //Подтверждение о принятии пакета клиентом
@@ -200,32 +194,32 @@ namespace RUCP
         //Обработка пакетов
         internal void ProcessReliable(Packet packet)
         {
-
+            ushort sequence = packet.Sequence;
             if (m_bufferReliable.Check(packet))
             {
                 //Отправка ACK>>
-                SendACK(packet, TechnicalChannel.ReliableACK);
+                SendACK(sequence, TechnicalChannel.ReliableACK);
                 //Отправка ACK<<
             }
 
         }
         internal void ProcessQueue(Packet packet)
         {
-            
+            ushort sequence = packet.Sequence;
             if (m_bufferQueue.Check(packet))
             {
                 //Отправка ACK>>
-                SendACK(packet, TechnicalChannel.QueueACK);
+                SendACK(sequence, TechnicalChannel.QueueACK);
                 //Отправка ACK<<
             }
         }
         internal void ProcessDiscard(Packet packet)
         {
-           
+            ushort sequence = packet.Sequence;
             if (m_bufferDiscard.Check(packet))
             {
                 //Отправка ACK>>
-                SendACK(packet, TechnicalChannel.DiscardACK);
+                SendACK(sequence, TechnicalChannel.DiscardACK);
                 //Отправка ACK<<
             }
         }

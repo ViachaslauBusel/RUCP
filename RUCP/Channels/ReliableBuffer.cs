@@ -36,12 +36,12 @@ namespace RUCP.Channels
 				// Если принятый пакет был отправлен после чем пакет записанный в буффер
 				if (relative > 0)
 				{
-				//	receivedPackages[index]?.Dispose();
 					m_receivedPackages[index] = (ushort)sequence;
+					m_master.Statistic.ReceivedPackets++;
 
 					m_master.HandlerPack(pack);
 				}
-
+				else m_master.Statistic.ReacceptedPackets++;
 			}
 			return true;
 		}

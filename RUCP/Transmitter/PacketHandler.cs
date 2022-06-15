@@ -1,9 +1,4 @@
-﻿using RUCP.ServerSide;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace RUCP.Transmitter
+﻿namespace RUCP.Transmitter
 {
     internal class PacketHandler
     {
@@ -13,51 +8,51 @@ namespace RUCP.Transmitter
 			
 				Client client = packet.Client;  //Получаем оброботчик(Сокет) конкретного клиента
 
-				//Если связь с клиентом не установлена 
-				if (!client.isConnected())
+
+			//Если связь с клиентом не установлена 
+			if (!client.isConnected())
+			{
+				if (client.isRemoteHost)
 				{
-					if (client.isRemoteHost)
-					{
-						//Прием ответа от сервера на открытие подключение
-						if (packet.TechnicalChannel == TechnicalChannel.Connection)
-						{ client.OpenConnection(); }
-					}
-					else
-					{
-						//и клиент хочет ее установить
-						if (packet.TechnicalChannel == TechnicalChannel.Connection)
-						{
-							if (packet.Encrypt)
-							{ client.CryptographerRSA.Decrypt(packet); }
-							float versionClient = packet.ReadFloat();
-							if (versionClient < Config.MIN_SUPPORTED_VERSION) { return; }
-
-							if (server.AddClient(client))
-							{
-
-								client.OpenConnection();//If the connection was successful
-
-
-								client.CryptographerRSA.SetPublicKey(packet);
-
-								//отпровляем подтверждение клиенту
-								Packet confirmPacket = Packet.Create();
-								confirmPacket.InitClient(client);
-								confirmPacket.TechnicalChannel = TechnicalChannel.Connection;
-								client.CryptographerAES.WriteKey(confirmPacket);
-								client.CryptographerRSA.Encrypt(confirmPacket);
-								confirmPacket.Send();
-
-							}
-						}
-						else//Если получен пакет без установленной связи, отправить этому клиенту команду на отключения
-						{
-							client.SendDisconnectCMD();
-						}
-					}
-					packet.Dispose();
-					return;
+					//Прием ответа от сервера на открытие подключение
+					if (packet.TechnicalChannel == TechnicalChannel.Connection && server.AddClient(client))
+					{ client.OpenConnection(); }
 				}
+				else
+				{
+					//и клиент хочет ее установить
+					if (packet.TechnicalChannel == TechnicalChannel.Connection)
+					{
+						if (packet.Encrypt)
+						{ client.CryptographerRSA.Decrypt(packet); }
+						float versionClient = packet.ReadFloat();
+						if (versionClient < Config.MIN_SUPPORTED_VERSION) { return; }
+
+						if (server.AddClient(client))
+						{
+							client.OpenConnection();//If the connection was successful
+
+
+							client.CryptographerRSA.SetPublicKey(packet);
+
+							//отпровляем подтверждение клиенту
+							Packet confirmPacket = Packet.Create();
+							confirmPacket.InitClient(client);
+							confirmPacket.TechnicalChannel = TechnicalChannel.Connection;
+							client.CryptographerAES.WriteKey(confirmPacket);
+							client.CryptographerRSA.Encrypt(confirmPacket);
+							confirmPacket.SendImmediately();
+
+						}
+					}
+					else//Если получен пакет без установленной связи, отправить этому клиенту команду на отключения
+					{
+						client.SendDisconnectCMD();
+					}
+				}
+				packet.Dispose();
+				return;
+			}
 
 				//Package processing
 				switch (packet.TechnicalChannel)
@@ -87,7 +82,7 @@ namespace RUCP.Transmitter
 							confirmPacket.TechnicalChannel = TechnicalChannel.Connection;
 							client.CryptographerAES.WriteKey(confirmPacket);
 							client.CryptographerRSA.Encrypt(confirmPacket);
-							confirmPacket.Send();
+							confirmPacket.SendImmediately();
 						}
 						packet.Dispose();
 						break;
@@ -112,6 +107,19 @@ namespace RUCP.Transmitter
 						//Обработка пакета
 						client.HandlerPack(packet);
 						break;
+
+				case TechnicalChannel.Stream:
+                 //   if (!client.isRemoteHost) 
+				//	{ Console.WriteLine($"[{(client.isRemoteHost ? "client" : "server")}]receive part stream"); }
+
+					foreach (var p in client.Stream.Read(packet))
+					{
+						//	if (!client.isRemoteHost)
+					//	{ Console.WriteLine($"receiven Sequence:{p.Sequence} ch:{p.TechnicalChannel}"); }
+						Process(server, p);
+					}
+					//packet.Dispose();
+					break;
 				}
 
 		}

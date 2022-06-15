@@ -42,18 +42,22 @@ namespace RUCP.Transmitter
                     if (packet.ACK || !packet.Client.isConnected()) { packet.ForcedDispose(); continue; }
 
                     //If the waiting time for confirmation of receipt of the package by the client exceeds timeout, disconnect the client
-                    if (packet.CalculatePing() > 100_000)
+                    if (packet.CalculatePing() > m_master.Options.DisconnectTimeout)
                     {
-                        Console.WriteLine($"[{m_master.GetType()}]Disconect time:{packet.CalculatePing()}, cicle:{packet.m_sendCicle} \n" +
-                            $"SentPackets:{packet.Client.Network.SentPackets}, ResentPackets:{packet.Client.Network.ResentPackets}");
+                        Console.WriteLine($"[{m_master.GetType()}]Disconect time:{packet.CalculatePing()}, cicle:{packet.m_sendCicle} timeout:{m_master.Options.DisconnectTimeout} \n" +
+                            $"SentPackets:{packet.Client.Statistic.SentPackets}, ResentPackets:{packet.Client.Statistic.ResentPackets}");
 
                         packet.Client.CloseConnection();
                     //    packet.ForcedDispose();
                         continue;
                     }
-                  //  Console.WriteLine("Recend packet");
-                    m_master.Socket.SendTo(packet, packet.Client.RemoteAddress);
-                    packet.Client.Network.ResentPackets++;
+                    //if (packet.ResendTime != DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) Console.WriteLine($"Время повторной отправки не совпадает, разница:{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - packet.ResendTime}");
+                   packet.Client.Stream.Write(packet);
+                  //  m_master.Socket.SendTo(packet, packet.Client.RemoteAddress);
+
+                   
+                  
+                    packet.Client.Statistic.ResentPackets++;
                    // Console.WriteLine($"пакет:[{packet.Sequence}]->переотправка");
 
                     Add(packet); //Запись на переотправку

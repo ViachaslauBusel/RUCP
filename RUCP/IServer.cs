@@ -9,6 +9,8 @@ namespace RUCP
     {
         ISocket Socket { get; }
         Resender Resender { get; }
+        TaskPool TaskPool { get; }
+        ServerOptions Options { get; }
 
         void CallException(Exception exception);
         bool AddClient(Client client);

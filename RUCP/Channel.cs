@@ -25,5 +25,7 @@ namespace RUCP
 
         internal const int Connection = 7;
         internal const int Disconnect = 8;
+
+        internal const int Stream = 9;
     }
 }

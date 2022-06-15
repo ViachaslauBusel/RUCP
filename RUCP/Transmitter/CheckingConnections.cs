@@ -15,7 +15,7 @@ namespace RUCP.Transmitter
             public Client client;
         }
 
-        private const long TIME_CHECK = 1 * 60_000;
+        private const long TIME_CHECK = 10_000;
         private IServer m_master;
         private  BlockingCollection<Verification> m_list_checking = new BlockingCollection<Verification>(new ConcurrentQueue<Verification>());
 
@@ -71,7 +71,7 @@ namespace RUCP.Transmitter
         {
             Packet pack = Packet.Create(client, Channel.Reliable);
             pack.WriteType(0);
-            pack.Send();
+            pack.SendImmediately();
         }
     }
 }

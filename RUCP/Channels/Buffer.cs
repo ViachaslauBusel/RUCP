@@ -37,8 +37,8 @@ namespace RUCP.Channels
 				if (m_sentPackages[index] != null && m_sentPackages[index].Sequence == sequence)
 				{
 					//Console.WriteLine($"пакет:[{sequence}]->ACK подвержден");
+					m_sentPackages[index].Client.Statistic.Ping = m_sentPackages[index].CalculatePing();
 					m_sentPackages[index].ACK = true;
-					m_sentPackages[index].Client.Network.Ping = m_sentPackages[index].CalculatePing();
 					m_sentPackages[index] = null;
 				}
 			}
@@ -55,14 +55,14 @@ namespace RUCP.Channels
 				//Если пакет в буффере еще не подтвержден и требует переотправки
 				if (m_sentPackages[index] != null)
 				{
-					throw new BufferOverflowException("send buffer overflow");
+					throw new BufferOverflowException($"[{(packet.Client.isRemoteHost ? "client" : "server")}]send buffer overflow. Try sent sequence:{m_numberSent}, in buffer sequence:{m_sentPackages[index].Sequence}, SendCicle:{m_sentPackages[index].m_sendCicle}, ch:{m_sentPackages[index].TechnicalChannel} time:{m_sentPackages[index].CalculatePing()}");
 				}
 				packet.Sequence = (ushort)m_numberSent;
 				m_sentPackages[index] = packet;
 
 				m_numberSent = (m_numberSent + 1) % SEQUENCE_WINDOW_SIZE;
 
-				packet.Client.Network.SentPackets++;
+				packet.Client.Statistic.SentPackets++;
 				//Console.WriteLine($"пакет:[{packet.Sequence}]->отправлен");
 			}
 		}

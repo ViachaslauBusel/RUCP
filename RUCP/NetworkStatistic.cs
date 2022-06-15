@@ -23,6 +23,11 @@ namespace RUCP
 
         public NetworkStatus Status { get; internal set; } = NetworkStatus.LISTENING;
 
+
+
+        public int ReceivedPackets { get; internal set; }
+        public int ReacceptedPackets { get; internal set; }
+
         /// <summary>
         /// Количество отправленных пакетов по надежным каналам
         /// </summary>
@@ -86,6 +91,11 @@ namespace RUCP
         {
             m_devRTT = 0;
             m_estimatedRTT = ping;
+        }
+
+        public override string ToString()
+        {
+            return $"SentPackets:{SentPackets}, ResentPackets:{ResentPackets}, ReceivedPackets:{ReceivedPackets}, ReacceptedPackets:{ReacceptedPackets}";
         }
     }
 }
