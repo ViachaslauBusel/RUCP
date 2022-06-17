@@ -8,13 +8,55 @@ using System.Text;
 
 namespace RUCP.ServerSide
 {
-    internal class ClientList : IEnumerable<Client>	
+    internal struct ClientEnumerator : IEnumerator<Client>
     {
+		private ClientSlot m_currentSlot;
+		public Client Current { get; private set; }
+
+        object IEnumerator.Current => Current;
+
+		internal ClientEnumerator(ClientSlot slot)
+        {
+			m_currentSlot = slot;
+			Current = null;
+        }
+
+        public void Dispose()
+        {
+           
+        }
+
+        public bool MoveNext()
+        {
+
+				Current = m_currentSlot?.Client;
+				m_currentSlot = m_currentSlot?.PrevSlot;
+			
+			
+			return Current != null;
+        }
+
+        public void Reset()
+        {
+        
+        }
+    }
+	internal class ClientSlot
+	{
+		public Client Client { get; set; }
+		public ClientSlot NextSlot { get; set; }
+		public ClientSlot PrevSlot { get; set; }
+	}
+	internal class ClientList : IEnumerable<Client>	
+    {
+	
 		private IServer m_master;
+		private ClientSlot m_head;
+		private object m_headLock = new object();
 		/***
 	   * Список всех подключенных сокетов(Клиентов)
 	   */
-		private ConcurrentDictionary<long, Client> m_list_client = new ConcurrentDictionary<long, Client>();
+		private ConcurrentDictionary<long, ClientSlot> m_list_client = new ConcurrentDictionary<long, ClientSlot>();
 
 		internal ClientList(IServer server)
         {
@@ -27,7 +69,21 @@ namespace RUCP.ServerSide
 		internal bool AddClient(Client client)
 		{
 			if (client.Server != m_master) return false;
-			return m_list_client.TryAdd(client.ID, client);
+			ClientSlot slot = new ClientSlot()
+            {
+				Client = client
+            };
+			if(m_list_client.TryAdd(client.ID, slot))
+            {
+                lock (m_headLock)
+                {
+					if(m_head != null) m_head.NextSlot = slot;
+					slot.PrevSlot = m_head;
+					m_head = slot;
+                }
+				return true;
+            }
+			return false;
 		}
 
 		/***
@@ -44,7 +100,7 @@ namespace RUCP.ServerSide
 		public Client GetClient(IPEndPoint endPoint)
         {
 			long id = SocketInformer.GetID(endPoint);
-			if (m_list_client.TryGetValue(id, out Client client)) { return client; }
+			if (m_list_client.TryGetValue(id, out ClientSlot slot)) { return slot.Client; }
 			return new Client(m_master, endPoint);
 		}
 		/// <summary>
@@ -52,16 +108,26 @@ namespace RUCP.ServerSide
 		/// </summary>
 		internal bool RemoveClient(Client client)
 		{
-			return m_list_client.TryRemove(client.ID, out Client _c);
+			 if(m_list_client.TryRemove(client.ID, out ClientSlot slot))
+            {
+				if(m_head == slot) { m_head = m_head.PrevSlot; }
+
+				if (slot.NextSlot != null) { slot.NextSlot.PrevSlot = slot.PrevSlot; }
+				if (slot.PrevSlot != null) { slot.PrevSlot.NextSlot = slot.NextSlot; }
+				slot.NextSlot = null;
+				slot.PrevSlot = null;
+				return true;
+            }
+			return false;
 		}
 
 		public int Count => m_list_client.Count;
 		
 
-        public IEnumerator<Client> GetEnumerator() => m_list_client.Values.GetEnumerator();
+        public IEnumerator<Client> GetEnumerator() => new ClientEnumerator(m_head);
 
 
-        IEnumerator IEnumerable.GetEnumerator() => m_list_client.Values.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => new ClientEnumerator(m_head);
 
 	}
 }

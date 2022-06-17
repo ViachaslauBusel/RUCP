@@ -11,11 +11,13 @@ namespace RUCP
         private Task m_previousTask;
         private volatile int m_taskCount = 0;
         private SemaphoreSlim m_concurrencySemaphore;
+        private Client m_client;
         private object m_locker = new object();
 
-        public TaskPipeline(SemaphoreSlim concurrencySemaphore)
+        public TaskPipeline(SemaphoreSlim concurrencySemaphore, Client client)
         {
             m_concurrencySemaphore = concurrencySemaphore;
+            m_client = client;
         }
 
         internal void Insert(Task task)
@@ -43,7 +45,8 @@ namespace RUCP
             {
                 if(--m_taskCount == 0)
                 {
-                   // Console.WriteLine("Unlock thread");
+                    // Console.WriteLine("Unlock thread");
+                    m_client.Stream.Flush();
                     m_concurrencySemaphore.Release();
                 }
             }
@@ -59,17 +62,17 @@ namespace RUCP
             m_concurrencySemaphore = new SemaphoreSlim(maxParallelism);
         }
 
-        internal TaskPipeline CreatePipeline()
+        internal TaskPipeline CreatePipeline(Client owner)
         {
-            return new TaskPipeline(m_concurrencySemaphore);
+            return new TaskPipeline(m_concurrencySemaphore, owner);
         }
 
        
 
         public void Dispose()
         {
-
-          //  m_concurrencySemaphore.Dispose();
+            m_concurrencySemaphore.AvailableWaitHandle.WaitOne(5_000);
+            m_concurrencySemaphore.Dispose();
         }
     }
 }

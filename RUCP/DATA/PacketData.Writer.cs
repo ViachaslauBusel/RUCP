@@ -17,15 +17,19 @@ namespace RUCP.DATA
         /// Записывает byte[]  в заранее определнный массив данных на отправку.
         /// Если размер данных для записи превышает размер массива возврощает exception
         /// </summary>
-        public void WriteBytes(byte[] bytes)
+        unsafe public void WriteBytes(byte[] bytes)
         {
+            //fixed (byte* d = bytes)
+            //{ WriteValue(d, bytes.Length); }
             if (m_dataAccess != Access.Write) throw new Exception("Packet not writable");
             WriteShort((short)bytes.Length);
             Array.Copy(bytes, 0, m_data, m_index, bytes.Length);
             m_realLength = m_index += bytes.Length;
         }
-        internal void WriteBytes(byte[] data, int length)
+        unsafe public void WriteBytes(byte[] data, int length)
         {
+            //fixed (byte* d = data)
+            //{ WriteValue(d, length); }
             if (m_dataAccess != Access.Write) throw new Exception("Packet not writable");
             WriteShort((short)length);
             Array.Copy(data, 0, m_data, m_index, length);

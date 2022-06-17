@@ -15,7 +15,7 @@ namespace RUCP.Channels
 		/// <summary>Буффер для хранения отправленных пакетов</summary>
 		private Packet[] m_sentPackages;
 		/// <summary>Порядковый номер отправляемого пакета</summary>
-		private volatile int m_numberSent = 0;
+		private volatile int m_sequenceConfirm = 0, m_sequenceSent = 0;
 
 
 
@@ -24,6 +24,18 @@ namespace RUCP.Channels
 			m_sentPackages = new Packet[size];
 		}
 
+		internal void Tick()
+        {
+			lock (m_sentPackages)
+            {
+				for(int i = m_sequenceConfirm; i != m_sequenceSent; i = (i + 1) % SEQUENCE_WINDOW_SIZE)
+                {
+					int index = i % m_sentPackages.Length;
+					m_sentPackages[index]?.Resend();
+				}
+            }
+
+		}
 		/// <summary>
 		/// Подтверждение о принятии пакета клиентом
 		/// </summary>
@@ -36,6 +48,8 @@ namespace RUCP.Channels
 				int index = sequence % m_sentPackages.Length;
 				if (m_sentPackages[index] != null && m_sentPackages[index].Sequence == sequence)
 				{
+					if (m_sequenceConfirm == sequence)
+					{ m_sequenceConfirm = (m_sequenceConfirm + 1) % SEQUENCE_WINDOW_SIZE; }
 					//Console.WriteLine($"пакет:[{sequence}]->ACK подвержден");
 					m_sentPackages[index].Client.Statistic.Ping = m_sentPackages[index].CalculatePing();
 					m_sentPackages[index].ACK = true;
@@ -51,18 +65,18 @@ namespace RUCP.Channels
 			lock (m_sentPackages)
 			{
 			
-				int index = m_numberSent % m_sentPackages.Length;
+				int index = m_sequenceSent % m_sentPackages.Length;
 				//Если пакет в буффере еще не подтвержден и требует переотправки
 				if (m_sentPackages[index] != null)
 				{
-					throw new BufferOverflowException($"[{(packet.Client.isRemoteHost ? "client" : "server")}]send buffer overflow. Try sent sequence:{m_numberSent}, in buffer sequence:{m_sentPackages[index].Sequence}, SendCicle:{m_sentPackages[index].m_sendCicle}, ch:{m_sentPackages[index].TechnicalChannel} time:{m_sentPackages[index].CalculatePing()}");
+					throw new BufferOverflowException($"[{(packet.Client.isRemoteHost ? "client" : "server")}]send buffer overflow. Try sent sequence:{m_sequenceSent}, in buffer sequence:{m_sentPackages[index].Sequence}, SendCicle:{m_sentPackages[index].m_sendCicle}, ch:{m_sentPackages[index].TechnicalChannel} time:{m_sentPackages[index].CalculatePing()}");
 				}
-				packet.Sequence = (ushort)m_numberSent;
+				packet.Sequence = (ushort)m_sequenceSent;
 				m_sentPackages[index] = packet;
 
-				m_numberSent = (m_numberSent + 1) % SEQUENCE_WINDOW_SIZE;
+				m_sequenceSent = (m_sequenceSent + 1) % SEQUENCE_WINDOW_SIZE;
 
-				packet.Client.Statistic.SentPackets++;
+
 				//Console.WriteLine($"пакет:[{packet.Sequence}]->отправлен");
 			}
 		}

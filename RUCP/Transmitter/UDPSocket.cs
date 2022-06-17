@@ -21,8 +21,9 @@ namespace RUCP.Transmitter
         private UDPSocket(int receiveBufferSize, int sendBufferSize, int localPort) 
         {
             m_socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            if(receiveBufferSize > 0) m_socket.ReceiveBufferSize = 3_145_728;
-            if(sendBufferSize > 0) m_socket.SendBufferSize = 3_145_728;
+           // m_socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
+            if (receiveBufferSize > 0) m_socket.ReceiveBufferSize = receiveBufferSize;
+            if(sendBufferSize > 0) m_socket.SendBufferSize = sendBufferSize;
             IPEndPoint localIP = new IPEndPoint(IPAddress.Any, localPort);
             m_socket.Bind(localIP);
         }
@@ -78,7 +79,13 @@ namespace RUCP.Transmitter
 
         public void Close()
         {
+         //   m_socket.Shutdown(SocketShutdown.Both);
             m_socket?.Close();
+            
+        }
+        public void Dispose()
+        {
+            m_socket?.Dispose();
             m_socket = null;
         }
     }

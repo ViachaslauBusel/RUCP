@@ -1,4 +1,5 @@
-﻿using RUCP.Transmitter;
+﻿using RUCP.ServerSide;
+using RUCP.Transmitter;
 using System;
 using System.Net;
 using System.Net.Sockets;
@@ -17,7 +18,9 @@ namespace RUCP
         private CheckingConnections m_cheking;
         private volatile bool m_work = true;
         private long m_firstPing = -1;
-
+        private ServerOptions m_options;
+        private Thread m_server_th;
+        private ClientList m_clients;
 
         public ISocket Socket => m_socket;
 
@@ -25,12 +28,18 @@ namespace RUCP
 
         public TaskPool TaskPool => throw new NotImplementedException();
 
-        public ServerOptions Options { get; } = new ServerOptions();
+        public ServerOptions Options => m_options;
 
-        internal RemoteServer(Client client, IPEndPoint iPEndPoint, bool networkEmulator = false)
+        public ClientList ClientList => m_clients;
+
+        internal RemoteServer(Client client, IPEndPoint iPEndPoint, ServerOptions options)
         {
-            m_socket = networkEmulator ? NetworkEmulator.CreateNetworkEmulatorSocket() : UDPSocket.CreateSocket();
+            m_options = options;
+            m_socket =  UDPSocket.CreateSocket();
             m_socket.Connect(iPEndPoint);
+
+            m_clients = new ClientList(this);
+           
 
             m_master = client;
             //Запуск потока переотправки потеряных пакетов
@@ -41,9 +50,9 @@ namespace RUCP
             m_cheking.InsertClient(client);
 
             //Запуск потока считывание датаграмм
-            Thread server_th = new Thread(() => Listener());
-            server_th.IsBackground = true;
-            server_th.Start();
+            m_server_th = new Thread(() => Listener());
+            m_server_th.IsBackground = true;
+            m_server_th.Start();
 
             Thread th = new Thread(() => Connector(client));
             th.Start();
@@ -61,6 +70,7 @@ namespace RUCP
             int ping = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - m_firstPing);
             m_firstPing = -1;
             client.Statistic.InitPing(ping + 15);
+            m_clients.AddClient(client);
             return true;
         }
 
@@ -71,7 +81,14 @@ namespace RUCP
 
         public bool RemoveClient(Client client)
         {
+            if(!m_work) return false;
             m_work = false;
+
+            m_resender?.Stop();
+            m_socket?.Close();
+            m_cheking?.Stop();
+
+            m_clients.RemoveClient(client);
             return true;
         }
 
@@ -123,6 +140,8 @@ namespace RUCP
 
                     PacketHandler.Process(this, packet);
 
+                    m_master.Stream.Flush();
+
                    
                 }
                 catch (SocketException e)
@@ -131,15 +150,22 @@ namespace RUCP
                     //    break;
                     //if (e.ErrorCode == 10054)
                     //    continue;
-                    CallException(e);
-                    m_master.Close();
-                    CallException(new Exception($"Client:{m_master.ID} was disconnected due to an unhandled exception"));
+                    if (m_work)
+                    {
+                        CallException(e);
+                        m_master.Close();
+                        CallException(new Exception($"Client:{m_master.ID} was disconnected due to an unhandled exception"));
+                    }
+                   
                 }
                 catch (Exception e)
                 {
-                    CallException(e);
-                    m_master.Close();
-                    CallException(new Exception($"Client:{m_master.ID} was disconnected due to an unhandled exception"));
+                    if (m_work)
+                    {
+                        CallException(e);
+                        m_master.Close();
+                        CallException(new Exception($"Client:{m_master.ID} was disconnected due to an unhandled exception"));
+                    }
                 }
             }
         }

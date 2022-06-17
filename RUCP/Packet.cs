@@ -203,9 +203,10 @@ namespace RUCP
 
 		internal void SendImmediately()
 		{
-			if (Client == null)
+			if (Client == null || !Client.isConnected())
 			{
-				throw new Exception("The packet cannot be sent, the client is not specified");
+				return; //TODO throw Exception
+						//throw new Exception("The packet cannot be sent, the client is not specified");
 			}
 			if (m_sendCicle != 0 || m_dataAccess == Access.Lock)
 			{
@@ -236,9 +237,9 @@ namespace RUCP
 
 		public NetStream Send()
 		{
-			if (Client == null)
+			if (Client == null || !Client.isConnected())
 			{
-				throw new Exception("The packet cannot be sent, the client is not specified");
+                throw new Exception("The packet cannot be sent, the client is not specified");
 			}
 
 			if (m_sendCicle != 0 || m_dataAccess == Access.Lock)
@@ -253,18 +254,37 @@ namespace RUCP
 			//Вставка в буфер отправленных пакетов для дальнейшего подтверждения об успешной доставке пакета
 			if (Client.InsertBuffer(this))
 			{
+				WriteSendTime();
 				//Record for re-sending
-				Client.Server.Resender.Add(this);
+				//Client.Server.Resender.Add(this);
+				Client.Statistic.SentPackets++;
 				m_dataAccess = Access.Lock;
 			}
 			else { dispose = true; }
 
-			Client.Stream.Write(this);
+
+			 Client.Stream.Write(this);
+			
 
 			NetStream stream = Client.Stream; 
 			if (dispose) Dispose();
 			return stream;
 		}
+
+		internal void Resend()
+        {
+			if (GetDelay() <= 0)
+            {
+				if (Client == null || !Client.isConnected())
+				{
+					throw new Exception("The packet cannot be sent, the client is not specified");
+				}
+				//Console.WriteLine("resend");
+				WriteSendTime();
+				Client.Stream.Write(this);
+				Client.Statistic.ResentPackets++;
+			}
+        }
 		
 	}
 }

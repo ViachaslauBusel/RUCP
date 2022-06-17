@@ -4,7 +4,7 @@ using System.Text;
 
 namespace RUCP
 {
-    public class ServerOptions
+    public class ServerOptions : ClientOptions
     {
         /// <summary>
         /// Server mode. 
@@ -16,14 +16,7 @@ namespace RUCP
         /// Maximum number of threads processing client requests
         /// </summary>
         public int MaxParallelism { get; set; } = 8;
-        /// <summary>
-        /// Waiting time before writing data to the socket for maximum filling of the MTU
-        /// </summary>
-        public int SendTimeout { get; set; } = 2;
-        /// <summary>
-        /// Time to wait for a response from the remote host before disconnecting it
-        /// </summary>
-        public int DisconnectTimeout { get; set; } = 6_000;
+    
 
         internal ServerOptions Clone() => new ServerOptions()
         {

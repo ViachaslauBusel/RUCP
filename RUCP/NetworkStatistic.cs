@@ -89,7 +89,7 @@ namespace RUCP
         }
         internal void InitPing(int ping)
         {
-            m_devRTT = 0;
+            m_devRTT = ping;
             m_estimatedRTT = ping;
         }
 

@@ -22,14 +22,15 @@ namespace RUCP
 	//	private bool m_networkEmulator = false;
 		private volatile bool m_work = false;
 		private ServerOptions m_options;
+        private Thread m_server_th;
 
 
 
-	//	private volatile int m_processPackets = 0;
-	//	private volatile int m_completedPackets = 0;
+        //	private volatile int m_processPackets = 0;
+        //	private volatile int m_completedPackets = 0;
 
-		/// <summary> Throwing exceptions received in the server</summary>
-		public event Action<Exception> throwingExceptions;
+        /// <summary> Throwing exceptions received in the server</summary>
+        public event Action<Exception> throwingExceptions;
 
 		
 		//internal void CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
@@ -37,8 +38,9 @@ namespace RUCP
 		Resender IServer.Resender => m_resender;
         TaskPool IServer.TaskPool => m_taskPool;
         ServerOptions IServer.Options => m_options;
+        ClientList IServer.ClientList => m_clients;
 
-		void IServer.CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
+        void IServer.CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
 		internal void CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
 		bool IServer.AddClient(Client client)
         {
@@ -111,9 +113,9 @@ namespace RUCP
 				if (m_options.Mode == Mode.Automatic)
 				{
 					//Запуск потока считывание датаграмм
-					Thread server_th = new Thread(() => Run());
-					server_th.IsBackground = false;
-					server_th.Start();
+				    m_server_th = new Thread(() => Run());
+					m_server_th.IsBackground = true;
+					m_server_th.Start();
 				}
 
 				System.Console.WriteLine("The server was started successfully");
@@ -208,11 +210,11 @@ namespace RUCP
                 catch (SocketException e)
                 {
 					//if (e.ErrorCode != 10004 && e.ErrorCode != 4)
-					{ CallException(e); }
+					if(m_work){ CallException(e); }
 				}
                 catch (Exception e)
 				{
-					  CallException(e); 
+					if (m_work) { CallException(e); }
 				}
 			}
 			m_socket.Close();
@@ -230,10 +232,18 @@ namespace RUCP
 				foreach (Client client in m_clients)
 				{
 					//Отправка клиенту команды на отключение и очистка списка клиентов
-					client.CloseConnection();
+					client.CloseConnection(sendDisconnectCMD: true);
 				}
 
-				m_taskPool.Dispose();
+				m_resender?.Stop();
+
+				m_socket.Close();
+				
+				m_taskPool?.Dispose();
+			
+				m_cheking?.Stop();
+
+				m_server_th?.Join();
 
 			} catch (Exception e)
             {
