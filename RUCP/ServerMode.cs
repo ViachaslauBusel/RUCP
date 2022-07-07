@@ -4,7 +4,7 @@ using System.Text;
 
 namespace RUCP
 {
-    public enum Mode
+    public enum ServerMode
     {
         Manual = 0,
         Automatic = 1

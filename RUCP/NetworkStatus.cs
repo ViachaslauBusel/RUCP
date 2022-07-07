@@ -12,7 +12,7 @@ namespace RUCP
         /// <summary>
         /// Соединение установлено
         /// </summary>
-        СONNECTED = 2,
+        CONNECTED = 2,
         /// <summary>
         /// Ожидается соединение
         /// </summary>

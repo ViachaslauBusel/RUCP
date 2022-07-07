@@ -6,7 +6,7 @@ using System.Threading;
 
 namespace RUCP.Transmitter
 {
-    internal class Resender
+    internal sealed class Resender
     {
         private IServer m_master;
         private Thread m_thread;
@@ -41,7 +41,7 @@ namespace RUCP.Transmitter
                     foreach(Client c in m_master.ClientList)
                     {
                         c.BufferTick();
-                        c.Stream.Flush();
+                        c.Stream?.Flush();//TODO disconnect
                     }
                     Thread.Sleep(1);
                   //  Packet packet = m_elements.Take();

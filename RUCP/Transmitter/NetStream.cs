@@ -7,62 +7,62 @@ using System.Threading.Tasks;
 namespace RUCP.Transmitter
 {
 
-    internal class FlushRequest : IDisposable
-    {
-        private object m_locker;
-        private Action m_flush;
-        private CancellationTokenSource m_cancelSource;
+    //internal class FlushRequest : IDisposable
+    //{
+    //    private object m_locker;
+    //    private Action m_flush;
+    //    private CancellationTokenSource m_cancelSource;
 
-        public FlushRequest(object locker, Action flush)
-        {
-            m_locker = locker;
-            m_flush = flush;
-        }
+    //    public FlushRequest(object locker, Action flush)
+    //    {
+    //        m_locker = locker;
+    //        m_flush = flush;
+    //    }
 
-        internal void FlushIn(int ticks)
-        {
-            lock (m_locker)
-            {
-                //Если запрос на вызов метода уже существует и он не был отменен
-                if (m_cancelSource != null && !m_cancelSource.Token.IsCancellationRequested) return;
+    //    internal void FlushIn(int ticks)
+    //    {
+    //        lock (m_locker)
+    //        {
+    //            //Если запрос на вызов метода уже существует и он не был отменен
+    //            if (m_cancelSource != null && !m_cancelSource.Token.IsCancellationRequested) return;
 
-                m_cancelSource?.Dispose();
+    //            m_cancelSource?.Dispose();
 
-                m_cancelSource = new CancellationTokenSource();
-                CancellationToken token = m_cancelSource.Token;
-                Task.Run(() =>
-                {
-                    Thread.Sleep(TimeSpan.FromTicks(ticks));
-                    lock (m_locker)
-                    {
-                        if (token.IsCancellationRequested) return;
-                      //  Console.WriteLine("Flush from request");
-                        m_flush();
-                    }
+    //            m_cancelSource = new CancellationTokenSource();
+    //            CancellationToken token = m_cancelSource.Token;
+    //            Task.Run(() =>
+    //            {
+    //                Thread.Sleep(TimeSpan.FromTicks(ticks));
+    //                lock (m_locker)
+    //                {
+    //                    if (token.IsCancellationRequested) return;
+    //                  //  Console.WriteLine("Flush from request");
+    //                    m_flush();
+    //                }
 
-                }, token);
-            }
-        }
+    //            }, token);
+    //        }
+    //    }
 
-        internal void Abort()
-        {
-            lock (m_locker)
-            {
-                m_cancelSource?.Cancel();
-            }
-        }
+    //    internal void Abort()
+    //    {
+    //        lock (m_locker)
+    //        {
+    //            m_cancelSource?.Cancel();
+    //        }
+    //    }
 
-        public void Dispose()
-        {
-            lock (m_locker)
-            {
-                Abort();
-                m_cancelSource?.Dispose();
-                m_cancelSource = null;
-            }
-        }
-    }
-    public class NetStream : IDisposable
+    //    public void Dispose()
+    //    {
+    //        lock (m_locker)
+    //        {
+    //            Abort();
+    //            m_cancelSource?.Dispose();
+    //            m_cancelSource = null;
+    //        }
+    //    }
+    //}
+    public sealed class NetStream : IDisposable
     {
         private Client m_client;
         private Packet m_outData;
@@ -131,7 +131,7 @@ namespace RUCP.Transmitter
         public void Dispose()
         {
          //   m_flushRequest.Dispose();
-            m_outData.Dispose();
+          //  m_outData.Dispose();
         }
     }
 }

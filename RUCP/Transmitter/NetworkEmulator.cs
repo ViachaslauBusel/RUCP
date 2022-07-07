@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace RUCP.Transmitter
 {
@@ -61,6 +62,16 @@ namespace RUCP.Transmitter
         {
             m_socket?.Close();
             m_socket = null;
+        }
+
+        public void Wait(int waitingTime)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
         }
     }
 }

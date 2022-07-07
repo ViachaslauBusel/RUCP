@@ -11,7 +11,7 @@ namespace RUCP
         /// Manual - to process packets, you need to call the ProcessPacket method
         /// Automatic - requests are processed automatically
         /// </summary>
-        public Mode Mode { get; set; } = Mode.Automatic;
+        public ServerMode Mode { get; set; } = ServerMode.Automatic;
         /// <summary>
         /// Maximum number of threads processing client requests
         /// </summary>

@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
+using System.Threading;
 
 namespace RUCP.Transmitter
 {
-    internal class UDPSocket : ISocket
+    internal sealed class UDPSocket : ISocket
     {
         private Socket m_socket = null;
      //   private bool connection = false;
@@ -79,14 +78,20 @@ namespace RUCP.Transmitter
 
         public void Close()
         {
-         //   m_socket.Shutdown(SocketShutdown.Both);
             m_socket?.Close();
-            
         }
         public void Dispose()
         {
             m_socket?.Dispose();
             m_socket = null;
         }
+
+        //public void Wait(int waitingTime)
+        //{
+        //    while (m_socket.Available > 0 && waitingTime-- > 0)
+        //    {
+        //        Thread.Sleep(1);
+        //    }
+        //}
     }
 }

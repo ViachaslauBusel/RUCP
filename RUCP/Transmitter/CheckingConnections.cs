@@ -7,7 +7,7 @@ using System.Threading;
 namespace RUCP.Transmitter
 {
    
-    internal class CheckingConnections
+    internal sealed class CheckingConnections
     {
         private class Verification
         {
@@ -76,7 +76,8 @@ namespace RUCP.Transmitter
 
         private void CheckingConnection(Client client)
         {
-            Packet pack = Packet.Create(client, Channel.Reliable);
+            Packet pack = Packet.Create(Channel.Reliable);
+            pack.InitClient(client);
             pack.WriteType(0);
             pack.SendImmediately();
         }

@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace RUCP
 {
-	public class Server : IServer
+	public sealed class Server : IServer
     {
 		private Func<IProfile> m_createProfile;
 
@@ -20,7 +20,7 @@ namespace RUCP
 		private TaskPool m_taskPool;
 		private int m_port;
 	//	private bool m_networkEmulator = false;
-		private volatile bool m_work = false;
+		private volatile bool m_packetHandlerWork = false, m_acceptConnection = false;
 		private ServerOptions m_options;
         private Thread m_server_th;
 
@@ -44,7 +44,7 @@ namespace RUCP
 		internal void CallException(Exception exception) { throwingExceptions?.Invoke(exception); }
 		bool IServer.AddClient(Client client)
         {
-            if (m_clients.AddClient(client))
+            if (m_acceptConnection && m_clients.AddClient(client))
             {
 				m_cheking.InsertClient(client);
 				return true;
@@ -83,8 +83,9 @@ namespace RUCP
 			{
 				
 
-				if (m_work) throw new Exception("The server is already in running mode");
-				m_work = true;
+				if (m_packetHandlerWork) throw new Exception("The server is already in running mode");
+				m_packetHandlerWork = true;
+				m_acceptConnection = true;
 
 				if (options == null) options = new ServerOptions();
 
@@ -110,7 +111,7 @@ namespace RUCP
 				m_cheking = CheckingConnections.Start(this);
 				m_taskPool = new TaskPool(m_options.MaxParallelism);
 
-				if (m_options.Mode == Mode.Automatic)
+				if (m_options.Mode == ServerMode.Automatic)
 				{
 					//Запуск потока считывание датаграмм
 				    m_server_th = new Thread(() => Run());
@@ -129,7 +130,7 @@ namespace RUCP
 
 		public void ProcessPacket()
         {
-			if (m_options.Mode != Mode.Manual || m_socket == null) return;
+			if (m_options.Mode != ServerMode.Manual || m_socket == null) return;
 			int availableBytes = m_socket.AvailableBytes;
 			EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
 			while (availableBytes > 0)
@@ -167,17 +168,19 @@ namespace RUCP
 		//Считывание датаграм из сокета
 		private void Run()
 		{
-			EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
-			while (m_work)
+			EndPoint remoteSender = new IPEndPoint(IPAddress.Any, 0);
+			while (m_packetHandlerWork)
 			{
 				try
-				{   
+				{
+					remoteSender = new IPEndPoint(IPAddress.Any, 0);
+
 					//Создание нового пакета для хранение данных
 					Packet packet = Packet.Create();
 
 					//Считывание датаграм
-					int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref senderRemote);
-					Client client = m_clients.GetClient((IPEndPoint)senderRemote);
+					int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref remoteSender);
+					Client client = m_clients.GetClient((IPEndPoint)remoteSender);
 					packet.InitData(receiveBytes);
 					packet.InitClient(client);
 
@@ -197,9 +200,10 @@ namespace RUCP
 						}
 						catch (Exception e)
 						{
-							CallException(new Exception($"Client:{client.ID} was disconnected due to an unhandled exception"));
-							client.Close();
-							CallException(e);
+							//CallException(new Exception($"Client:{client.ID} was disconnected due to an unhandled exception"));
+							if (!client.HandleException(e))
+							{ client.Close(); }
+							//CallException(e);
 						}
 						
 					});
@@ -209,12 +213,20 @@ namespace RUCP
 				}
                 catch (SocketException e)
                 {
+					//e.ErrorCode == 10054 The remote host forcibly terminated the existing connection
+					if(e.ErrorCode == 10054)
+                    {
+						//TODO Handle the exception thrown by the local socket when sending a packet to a remote closed socket
+						//CallException(new Exception($"The client:{remoteSender} was disconnected. Error code:{e.ErrorCode}"));
+						continue;
+					}
 					//if (e.ErrorCode != 10004 && e.ErrorCode != 4)
-					if(m_work){ CallException(e); }
+					
+					if (m_packetHandlerWork){ CallException(e); }
 				}
                 catch (Exception e)
 				{
-					if (m_work) { CallException(e); }
+					if (m_packetHandlerWork) { CallException(e); }
 				}
 			}
 			m_socket.Close();
@@ -227,27 +239,29 @@ namespace RUCP
 		{
 			try
 			{
-				m_work = false;
-				
+				m_acceptConnection = false;
 				foreach (Client client in m_clients)
 				{
 					//Отправка клиенту команды на отключение и очистка списка клиентов
 					client.CloseConnection(sendDisconnectCMD: true);
 				}
-
+				
 				m_resender?.Stop();
+				m_cheking?.Stop();
 
-				m_socket.Close();
+				
 				
 				m_taskPool?.Dispose();
-			
-				m_cheking?.Stop();
+
+				m_packetHandlerWork = false;
+				m_socket?.Close();
+				m_socket?.Dispose();
 
 				m_server_th?.Join();
 
 			} catch (Exception e)
             {
-				CallException(e);
+				  CallException(e); 
             }
 			finally 
 			{

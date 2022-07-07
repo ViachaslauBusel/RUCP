@@ -15,6 +15,12 @@ namespace RUCP
         /// <summary>Доступно пакетов для обработки</summary>
         public int AvailablePackets => m_pipeline.Count;
 
+        public bool HandleException(Exception exception)
+        {
+            Console.WriteLine($"Client: Exception caught:{exception}");
+            return true;
+        }
+
         /// <summary>
         /// Обработать указанное количество пакетов(count) из очереди принятых пакетов
         /// </summary>

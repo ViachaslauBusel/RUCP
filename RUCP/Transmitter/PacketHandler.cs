@@ -1,6 +1,6 @@
 ﻿namespace RUCP.Transmitter
 {
-    internal class PacketHandler
+    internal static class PacketHandler
     {
 		internal static void Process(IServer server, Packet packet)
 		{

@@ -4,12 +4,11 @@ using RUCP.Tools;
 using RUCP.Transmitter;
 using System;
 using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace RUCP
 {
-    public class Client : IDisposable
+    public sealed class Client : IDisposable
     {
         /// <summary>Выступает в роли моста, между представлением клиента, на стороне клиента и сервере</summary>
         private IServer m_server;
@@ -65,7 +64,7 @@ namespace RUCP
            
         }
 
-        public void ConnectTo(string adress, int port, ServerOptions options = null)
+        public void ConnectTo(string address, int port, ServerOptions options = null)
         {
             if(m_server != null) { throw new Exception("The client is already connected to the remote host"); }
             if (m_profile == null) { throw new Exception("Профиль для обработки пакетов не задан"); }
@@ -79,7 +78,7 @@ namespace RUCP
             m_bufferQueue = new QueueBuffer(this, 512);
             m_bufferDiscard = new DiscardBuffer(this, 512);
 
-            m_remoteAdress = new IPEndPoint(IPAddress.Parse(adress), port);
+            m_remoteAdress = new IPEndPoint(IPAddress.Parse(address), port);
             m_server = new RemoteServer(this, m_remoteAdress, options);
          
             ID = SocketInformer.GetID(m_remoteAdress);
@@ -90,13 +89,13 @@ namespace RUCP
             m_profile = getHandler.Invoke();
         }
 
-        internal bool isConnected() => m_network.Status == NetworkStatus.СONNECTED;
+        internal bool isConnected() => m_network.Status == NetworkStatus.CONNECTED;
 
         internal void BufferTick()
         {
-            m_bufferReliable.Tick();
-            m_bufferQueue.Tick();
-            m_bufferDiscard.Tick();
+            m_bufferReliable?.Tick();
+            m_bufferQueue?.Tick();
+            m_bufferDiscard?.Tick();
         }
         internal void OpenConnection()
         {
@@ -104,7 +103,7 @@ namespace RUCP
             {
                // Console.WriteLine($"Open connection:{isRemoteHost}");
                 if(m_network.Status != NetworkStatus.LISTENING) { throw new Exception("Error opening connection"); }
-                m_network.Status = NetworkStatus.СONNECTED;
+                m_network.Status = NetworkStatus.CONNECTED;
                 m_profile.OpenConnection();
             }
            
@@ -173,7 +172,9 @@ namespace RUCP
                 default: return false;
             }
         }
-       
+
+        internal bool HandleException(Exception e) => m_profile.HandleException(e);
+
         //Обработка пакетов
         internal void ProcessReliable(Packet packet)
         {
@@ -231,7 +232,7 @@ namespace RUCP
             if (sendDisconnectCMD && NetworkStatus.LISTENING.HasFlag(m_network.Status))
             { SendDisconnectCMD(); }
 
-            if (CloseIf(NetworkStatus.СONNECTED | NetworkStatus.LISTENING))
+            if (CloseIf(NetworkStatus.CONNECTED | NetworkStatus.LISTENING))
             { Dispose(); }
         }
         internal bool CloseIf(NetworkStatus status)
@@ -251,11 +252,22 @@ namespace RUCP
             }
         }
 
+        public void Send(Packet packet)
+        {
+            packet.InitClient(this);
+            packet.Send();
+        }
+        public void Send(Packet packet, Channel channel)
+        {
+            packet.InitClient(this);
+            packet.TechnicalChannel = (int)channel;
+            packet.Send();
+        }
         public void Dispose()
         {
             lock (m_locker)
             {
-                CloseIf(NetworkStatus.СONNECTED | NetworkStatus.LISTENING);
+                CloseIf(NetworkStatus.CONNECTED | NetworkStatus.LISTENING);
                 if (m_network.Status == NetworkStatus.CLOSED)
                 {
 
@@ -263,7 +275,7 @@ namespace RUCP
 
                     // m_remoteAdress = null;
                     m_stream?.Dispose();
-                    m_stream = null;
+                    // m_stream = null;
 
                     m_bufferReliable?.Dispose();
                     m_bufferQueue?.Dispose();

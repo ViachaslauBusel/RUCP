@@ -8,6 +8,7 @@ namespace RUCP
     {
         void OpenConnection();
         void ChannelRead(Packet pack);
+        bool HandleException(Exception exception);
         void CloseConnection();
         void CheckingConnection();
     }

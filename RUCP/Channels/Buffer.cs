@@ -31,7 +31,34 @@ namespace RUCP.Channels
 				for(int i = m_sequenceConfirm; i != m_sequenceSent; i = (i + 1) % SEQUENCE_WINDOW_SIZE)
                 {
 					int index = i % m_sentPackages.Length;
-					m_sentPackages[index]?.Resend();
+
+					if (m_sentPackages[index] == null) continue;
+
+					Client client = m_sentPackages[index].Client;
+					//TODO fix bug -> Something went wrong/ Client cannot be null 
+					if (client == null) {  continue; }
+					if (!client.isConnected())
+                    {
+						m_sentPackages[index].ForcedDispose();
+						m_sentPackages[index] = null;
+
+						continue;
+					}
+
+
+                    //If the waiting time for confirmation of receipt of the package by the client exceeds timeout, disconnect the client
+                    if (m_sentPackages[index].CalculatePing() > m_sentPackages[index].Client.Server.Options.DisconnectTimeout)
+                    {
+                        Console.WriteLine($"[!]Disconect time:{m_sentPackages[index].CalculatePing()},  SentPackets:{m_sentPackages[index].Client.Statistic.SentPackets}, ResentPackets:{m_sentPackages[index].Client.Statistic.ResentPackets}");
+
+						m_sentPackages[index].Client.CloseConnection();
+						m_sentPackages[index].ForcedDispose();
+						m_sentPackages[index] = null;
+	
+						continue;
+                    }
+
+                    m_sentPackages[index].Resend();
 				}
             }
 
@@ -53,6 +80,7 @@ namespace RUCP.Channels
 					//Console.WriteLine($"пакет:[{sequence}]->ACK подвержден");
 					m_sentPackages[index].Client.Statistic.Ping = m_sentPackages[index].CalculatePing();
 					m_sentPackages[index].ACK = true;
+					m_sentPackages[index].ForcedDispose();
 					m_sentPackages[index] = null;
 				}
 			}
@@ -69,7 +97,7 @@ namespace RUCP.Channels
 				//Если пакет в буффере еще не подтвержден и требует переотправки
 				if (m_sentPackages[index] != null)
 				{
-					throw new BufferOverflowException($"[{(packet.Client.isRemoteHost ? "client" : "server")}]send buffer overflow. Try sent sequence:{m_sequenceSent}, in buffer sequence:{m_sentPackages[index].Sequence}, SendCicle:{m_sentPackages[index].m_sendCicle}, ch:{m_sentPackages[index].TechnicalChannel} time:{m_sentPackages[index].CalculatePing()}");
+					throw new BufferOverflowException($"[{(packet.Client.isRemoteHost ? "client" : "server")}]send buffer overflow. Try sent sequence:{m_sequenceSent}, in buffer sequence:{m_sentPackages[index].Sequence}, ch:{m_sentPackages[index].TechnicalChannel} time:{m_sentPackages[index].CalculatePing()}");
 				}
 				packet.Sequence = (ushort)m_sequenceSent;
 				m_sentPackages[index] = packet;
@@ -83,9 +111,7 @@ namespace RUCP.Channels
 
 		internal void Dispose()
 		{
-			//The resender will release these packets
-			//for (int i = 0; i < receivedPackages.Length; i++)
-			//	receivedPackages[i]?.Dispose();
+			Tick();
 		}
 	}
 }

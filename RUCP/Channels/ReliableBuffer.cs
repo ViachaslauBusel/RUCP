@@ -5,7 +5,7 @@ using System.Text;
 
 namespace RUCP.Channels
 {
-    internal class ReliableBuffer : Buffer
+    internal sealed class ReliableBuffer : Buffer
     {
 		private Client m_master;
 

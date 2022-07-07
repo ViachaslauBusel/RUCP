@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RUCP
 {
-    internal class TaskPipeline
+    internal sealed class TaskPipeline
     {
         private Task m_previousTask;
         private volatile int m_taskCount = 0;
@@ -52,7 +52,7 @@ namespace RUCP
             }
         }
     }
-    internal class TaskPool : IDisposable
+    internal sealed class TaskPool : IDisposable
     {
         private SemaphoreSlim m_concurrencySemaphore;
 

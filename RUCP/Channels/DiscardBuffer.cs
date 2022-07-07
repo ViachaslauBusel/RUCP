@@ -5,7 +5,7 @@ using System.Text;
 
 namespace RUCP.Channels
 {
-    internal class DiscardBuffer : Buffer
+    internal sealed class DiscardBuffer : Buffer
     {
 		struct DiscardNode
 		{

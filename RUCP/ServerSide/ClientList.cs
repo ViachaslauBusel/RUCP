@@ -41,13 +41,13 @@ namespace RUCP.ServerSide
         
         }
     }
-	internal class ClientSlot
+	internal sealed class ClientSlot
 	{
 		public Client Client { get; set; }
 		public ClientSlot NextSlot { get; set; }
 		public ClientSlot PrevSlot { get; set; }
 	}
-	internal class ClientList : IEnumerable<Client>	
+	internal sealed class ClientList : IEnumerable<Client>	
     {
 	
 		private IServer m_master;

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace RUCP.Channels
 {
-    internal class QueueBuffer : Buffer
+    internal sealed class QueueBuffer : Buffer
     {
 	    struct QueueNode
 		{

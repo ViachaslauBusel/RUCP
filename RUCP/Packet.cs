@@ -13,11 +13,11 @@ namespace RUCP
 	//	Normal,
 	//	Large
 	//}
-	public partial class Packet : PacketData, IDelayed, IComparable, IComparable<Packet>
+	public sealed partial class Packet : PacketData, IDelayed, IComparable, IComparable<Packet>
     {
 
 
-		internal volatile int m_sendCicle = 0;
+		private volatile int m_sendCicle = 0;
 		private volatile bool m_ack = false;
 		/// <summary>Время отправки пакета</summary>
 		private long m_sendTime;
@@ -35,7 +35,7 @@ namespace RUCP
 		public Client Client { get; private set; }
 
 
-		public void InitClient(Client client) { Client = client; }
+		internal void InitClient(Client client) { Client = client; }
 		/// <summary>
 		/// Записывает время отправки/переотправки
 		/// </summary>
@@ -120,12 +120,12 @@ namespace RUCP
 
 
 
-		private Packet(Client client, Channel channel)
+		private Packet(Channel channel)
 		{
 
 			m_data = new byte[DATA_SIZE];
 			Reset();
-			this.Client = client;
+	
 			this.TechnicalChannel = (int)channel;
 
 		}
@@ -134,10 +134,10 @@ namespace RUCP
 			m_data = new byte[DATA_SIZE];
 			Reset();
 		}
-		private Packet Copy(Client client, Packet copy_packet)
+		private Packet Copy(Packet copy_packet)
 		{
 			m_data = new byte[copy_packet.Data.Length];
-			this.Client = client;
+;
 			Array.Copy(copy_packet.Data, 0, this.Data, 0, copy_packet.Data.Length);
 
 			m_index = copy_packet.m_index;
@@ -145,24 +145,18 @@ namespace RUCP
 			return this;
 		}
 
-		/// <summary>
-		/// Creates a packet without a destination, with the channel through which it will be delivered
-		/// </summary>
-		/// <param name="channel"></param>
-		/// <returns></returns>
-		public static Packet Create(Channel channel) => Create(null, channel);
+
 		/// <summary>
 		/// Creates a packet with the channel through which it will be delivered
 		/// </summary>
-		public static Packet Create(Client client, Channel channel)
+		public static Packet Create(Channel channel)
 		{
             if (TryTakeFromPool(out Packet packet))
             {
-                packet.Client = client;
                 packet.TechnicalChannel = (int)channel;
                 return packet;
             }
-            return new Packet(client, channel);
+            return new Packet(channel);
 		}
 		/// <summary>
 		/// Creates a copy of the packet
@@ -170,14 +164,14 @@ namespace RUCP
 		/// <param name="client"></param>
 		/// <param name="copy_packet"></param>
 		/// <returns></returns>
-		public static Packet Create(Client client, Packet copy_packet)
+		public static Packet Create(Packet copy_packet)
 		{
             if (TryTakeFromPool(out Packet packet))
             {
-                packet.Copy(client, copy_packet);
+                packet.Copy(copy_packet);
                 return packet;
             }
-            return new Packet().Copy(client, copy_packet);
+            return new Packet().Copy(copy_packet);
 		}
 		internal static Packet Create()
 		{
@@ -205,8 +199,7 @@ namespace RUCP
 		{
 			if (Client == null || !Client.isConnected())
 			{
-				return; //TODO throw Exception
-						//throw new Exception("The packet cannot be sent, the client is not specified");
+				throw new Exception("The packet cannot be sent, the client is not specified");
 			}
 			if (m_sendCicle != 0 || m_dataAccess == Access.Lock)
 			{
@@ -235,7 +228,7 @@ namespace RUCP
 
 		}
 
-		public NetStream Send()
+		internal NetStream Send()
 		{
 			if (Client == null || !Client.isConnected())
 			{
@@ -277,10 +270,11 @@ namespace RUCP
             {
 				if (Client == null || !Client.isConnected())
 				{
-					throw new Exception("The packet cannot be sent, the client is not specified");
+					return;
 				}
-				//Console.WriteLine("resend");
-				WriteSendTime();
+           
+                //Console.WriteLine("resend");
+                WriteSendTime();
 				Client.Stream.Write(this);
 				Client.Statistic.ResentPackets++;
 			}

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace RUCP.Transmitter
 {
@@ -14,6 +15,11 @@ namespace RUCP.Transmitter
         void Send(Packet packet);
         void SendTo(byte[] data, int size, IPEndPoint remoteAdress);
         int ReceiveFrom(byte[] buffer, ref EndPoint endPoint);
+        /// <summary>
+        /// Close socket for incoming packets
+        /// </summary>
         void Close();
+     //   void Wait(int waitingTime);
+        void Dispose();
     }
 }

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace RUCP
 {
-    public class NetworkStatistic
+    public sealed class NetworkStatistic
     {
         /// <summary>Среднее время колебаний задержек между отправкой пакета и получении подтверждения об доставке пакета</summary>
         private int m_devRTT = 0;
