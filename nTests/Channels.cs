@@ -1,12 +1,10 @@
 using NUnit.Framework;
 using RUCP;
 using RUCP.Channels;
-using RUCP.Transmitter;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace nTests
 {
@@ -14,20 +12,24 @@ namespace nTests
     {
         class ServerProfile : IProfile
         {
+
             private volatile int m_totalReadPacket = 0;
-            private volatile int m_totalTypePacket = 0;
+            private Client m_client;
             public void ChannelRead(Packet pack)
             {
-                m_totalReadPacket++;
+                m_client = pack.Client;
+               
                 if (pack.ReadType() == 1)
                 {
-                    m_totalTypePacket++;
-                    Packet packet = Packet.Create(pack.Client, Channel.Reliable);
+                    m_totalReadPacket++;
+                    Packet packet = Packet.Create(Channel.Reliable);
                     packet.WriteType(1);
                     packet.WriteInt(pack.ReadInt());
-                PushPacket(packet);
-                   
+                   PushPacket(pack.Client, packet);
+
                 }
+             //   ThreadCount.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);
+              // Console.WriteLine($"peer:{pack.Client.ID}, th:{Thread.CurrentThread.ManagedThreadId}");
                 pack.Dispose();
             }
 
@@ -38,7 +40,14 @@ namespace nTests
 
             public void CloseConnection()
             {
-                Console.WriteLine($"m_totalReadPacket:{m_totalReadPacket} type:{m_totalTypePacket}");
+                if(m_client != null)
+                Console.WriteLine($"Server -> m_totalReadPacket:{m_totalReadPacket}, {m_client.Statistic.ToString()}");
+            }
+
+            public bool HandleException(Exception exception)
+            {
+                Console.WriteLine($"Server: Exception caught:{exception}");
+                return true;
             }
 
             public void OpenConnection()
@@ -49,7 +58,7 @@ namespace nTests
 
 
         private Server m_server;
-        private Client[] m_clients = new Client[8];
+        private Client[] m_clients = new Client[80];
 
         private bool ForeachClients(Predicate<Client> predicate)
         {
@@ -59,44 +68,73 @@ namespace nTests
             }
             return true;
         }
-        private static void PushPacket(Packet packet)
-        {
-            Stopwatch sw = Stopwatch.StartNew();    
-            while (sw.Elapsed.TotalMilliseconds < 5_000)
+        private static void PushPacket(Client client, Packet packet)
+       {
+            Stopwatch sw = Stopwatch.StartNew();
+            while (true)
             {
                 try
                 {
-                    packet.Send();
+
+                    client.Send(packet);
                     return;
                 }
-                catch (BufferOverflowException)
+                catch (BufferOverflowException er)
                 {
-                   //  Console.WriteLine("BufferOverflowException");
-                    Thread.Sleep(1);
+
+                    if (sw.Elapsed.TotalMilliseconds > 5_000)
+                    {
+
+                        Console.WriteLine($"Не удалось отправить пакет");
+                        throw new Exception("End");
+                    }
+                    //  Console.WriteLine("BufferOverflowException");
+                    Thread.Sleep(3);
                 }
-                catch (Exception e){ Console.Error.WriteLine($"UnknownException;{e}"); Assert.Fail(); return; }
+
             }
-            throw new Exception("BufferOverflowException");
+            //    try
+            //    {
+            //        packet.Send();
+            //    }
+            //    catch (BufferOverflowException e)
+            //    {
+            //     //   if (packet.Client.isRemoteHost) Thread.Sleep(1);
+            //       // Task.Factory.StartNew(() =>
+            //     //   {
+
+            //     //   });
+            //    }
+
         }
         [SetUp]
         public void SetUp()
         {
             m_server?.Stop();
-            m_server = new Server(3232, networkEmulator: true);
+            m_server = new Server(3232);
             m_server.SetHandler(() => new ServerProfile());
-            m_server.Start();
+            m_server.throwingExceptions += (e) => Console.Error.WriteLine(e);
+            m_server.Start(new ServerOptions()
+            {
+                SendTimeout = 5_000,
+                MaxParallelism = 16,
+                DisconnectTimeout = 6_000
+            });
 
             for (int i = 0; i < m_clients.Length; i++)
             {
                 m_clients[i] = new Client();
                 m_clients[i].SetHandler(() => new UnityProfile());
-                m_clients[i].ConnectTo("127.0.0.1", 3232, networkEmulator: false);
+                m_clients[i].ConnectTo("127.0.0.1", 3232, new ServerOptions()
+                {
+                    SendTimeout=5_000
+                });
             }
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             while (stopwatch.Elapsed.TotalMilliseconds < 3_000.0)
             {
-                if (ForeachClients((c) => c.Network.Status == NetworkStatus.СONNECTED))
+                if (ForeachClients((c) => c.Statistic.Status == NetworkStatus.CONNECTED))
                 {
   
                     return;
@@ -107,30 +145,39 @@ namespace nTests
         [Test]
         public void TestConnection()
         {
-            Assert.True(ForeachClients((c) => c.Network.Status == NetworkStatus.СONNECTED));
+            Assert.True(ForeachClients((c) => c.Statistic.Status == NetworkStatus.CONNECTED));
+            Assert.True(ForeachClients((c) => { c.Dispose(); return true; }));
+            Assert.True(ForeachClients((c) => { c.Close(); return true; }));
+            m_server.Stop();
         }
         [Test]
         public void TestReliable_1()
         {
-            int numberTest = 50_000;
+            int numberTest = 6_250;
             int testSum = Enumerable.Range(0, numberTest).Sum();
 
 
-
             Stopwatch timer = Stopwatch.StartNew();
+          //  int sleepJ = 10;
             for (int j = 0; j < numberTest; j++)
             {
                 int dataJ = j;
                 // Parallel.ForEach(m_clients, (c) =>
                 foreach (var c in m_clients)
                 {
-                    Packet packet = Packet.Create(c, Channel.Reliable);
+                    Packet packet = Packet.Create(Channel.Reliable);
                     packet.WriteType(1);
                     packet.WriteInt(dataJ);
-                    PushPacket(packet);
+                    PushPacket(c, packet);
                 }//);   
-            }
-            double sendTime = timer.Elapsed.TotalMilliseconds;
+                //if (dataJ % sleepJ == 0)
+                //{
+                //    Thread.Sleep(1);
+                //    sleepJ += 10;
+                //}
+;            }
+            foreach (var c in m_clients) { c.Stream.Flush(); }
+                double sendTime = timer.Elapsed.TotalMilliseconds;
             Stopwatch stopwatch = Stopwatch.StartNew();
             while (true)
             {
@@ -153,17 +200,16 @@ namespace nTests
                     }
                     break;
                 }
-                else if (stopwatch.Elapsed.TotalMilliseconds > 50_000.0)
+                else if (stopwatch.Elapsed.TotalMilliseconds > 5_000.0)
                 {
-                    ForeachClients((c) =>
-                    {
-                        if (((UnityProfile)c.Profile).AvailablePackets != numberTest)
-                        {
-                            Console.WriteLine($"было отправлено:{c.Network.SentPackets}, переотправлено:{c.Network.ResentPackets}");
-                          //  Console.WriteLine($"AvailablePackets:{((UnityProfile)c.Profile).AvailablePackets} ClientOnline:{c.Network.Status}");
-                        }
-                        return true;
-                    });
+                    //foreach(Client c in m_clients)
+                    //{
+                    //    if (((UnityProfile)c.Profile).AvailablePackets != numberTest)
+                    //    {
+                    //        Console.WriteLine($"было отправлено:{c.Statistic.SentPackets}, переотправлено:{c.Statistic.ResentPackets}");
+                    //        //  Console.WriteLine($"AvailablePackets:{((UnityProfile)c.Profile).AvailablePackets} ClientOnline:{c.Network.Status}");
+                    //    }
+                    //}
                     m_server.Stop();
                     Assert.Fail();
                     return;
@@ -175,15 +221,14 @@ namespace nTests
             int sumResentPackets = 0;
             ForeachClients((c) =>
             {
-                sumResentPackets += c.Network.ResentPackets;
+                sumResentPackets += c.Statistic.ResentPackets;
                   
                 return true;
             });
-            Console.WriteLine($"ResentPackets:{sumResentPackets}");
-            //ver. 0.010
-            //- 23070,5893ms
-            //- 23741,4702ms
-            //- 23305,5446ms
+            m_server.Stop();
+            Assert.True(ForeachClients((c) => { c.Close(); return true; }));
+            Assert.True(ForeachClients((c) => { c.Dispose(); return true; }));
+
             Assert.Pass();
         }
         [Test]
@@ -191,21 +236,32 @@ namespace nTests
         {
             if(m_clients.Length == 0) { Assert.Fail(); return; }
 
-            int numberTest = 1_000_000;
+            int numberTest = 1_000_000;// _000;
             int testSum = 0;
             for(int i=0; i<numberTest; i++)
             {
                 testSum += i;
             }
            Stopwatch timer =  Stopwatch.StartNew();
-            for (int j = 0; j < numberTest; j++)
-            {
-             
-                Packet packet = Packet.Create(m_clients[0], Channel.Reliable);
-                packet.WriteType(1);
-                packet.WriteInt(j);
-                PushPacket(packet);
+            try {
+                for (int j = 0; j < numberTest; j++)
+                {
+
+                    Packet packet = Packet.Create(Channel.Reliable);
+                    packet.WriteType(1);
+                    packet.WriteInt(j);
+                    PushPacket(m_clients[0], packet);
+
+                  
+                }
             }
+            catch
+            {
+                Console.WriteLine($"Client -> {m_clients[0].Statistic.ToString()}");
+                m_server.Stop();
+                Assert.Fail();
+            }
+          //  m_clients[0].Stream.Flush();
             double sendTime = timer.Elapsed.TotalMilliseconds; 
             Stopwatch stopwatch = Stopwatch.StartNew();
             while (true)
@@ -223,22 +279,30 @@ namespace nTests
                  //   Console.WriteLine($"test:{testSum} sum:{sum}");
                     if (sum == testSum)
                     {
+                        Console.WriteLine($"Verification of transmitted data was successful -> {sum}");
                         break;
                     }
                     Assert.Fail();
                     return;
                 }
-                else if (stopwatch.Elapsed.TotalMilliseconds > 20_000.0)
+                else if (stopwatch.Elapsed.TotalMilliseconds > 5_000.0)
                 {
                  //   m_server.Stop();
                     Console.WriteLine($"AvailablePackets:{((UnityProfile)m_clients[0].Profile).AvailablePackets}");
+                    Console.WriteLine($"Send time:{sendTime}. Total time:{timer.Elapsed.TotalMilliseconds}");
+                    Console.WriteLine($"Client -> {m_clients[0].Statistic.ToString()}");
+
+                    m_server.Stop();
                     Assert.Fail();
                     return;
                 }
             }
             timer.Stop();
-            Thread.Sleep(5_000);
+
             Console.WriteLine($"Send time:{sendTime}. Total time:{timer.Elapsed.TotalMilliseconds}");
+            Console.WriteLine($"Client -> {m_clients[0].Statistic.ToString()}");
+
+            m_server.Stop();
 
             Assert.Pass();
         }
@@ -247,16 +311,16 @@ namespace nTests
         {
             if (m_clients.Length == 0) { Assert.Fail(); return; }
 
-            int numberTest = 1_000_000;
+            int numberTest = 1_000;// _000;
 
             Stopwatch timer = Stopwatch.StartNew();
             for (int j = 0; j < numberTest; j++)
             {
                 while ((j - ((UnityProfile)m_clients[0].Profile).AvailablePackets) > 200) { Thread.Sleep(1); }
-                Packet packet = Packet.Create(m_clients[0], Channel.Queue);
+                Packet packet = Packet.Create(Channel.Queue);
                 packet.WriteType(1);
                 packet.WriteInt(j);
-                PushPacket(packet);
+                PushPacket(m_clients[0], packet);
             }
             double sendTime = timer.Elapsed.TotalMilliseconds;
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -310,10 +374,10 @@ namespace nTests
             Stopwatch timer = Stopwatch.StartNew();
             for (int j = 0; j <= numberTest; j++)
             {
-                Packet packet = Packet.Create(m_clients[0], Channel.Discard);
+                Packet packet = Packet.Create(Channel.Discard);
                 packet.WriteType(1);
                 packet.WriteInt(j);
-                PushPacket(packet);
+                PushPacket(m_clients[0], packet);
             }
             double sendTime = timer.Elapsed.TotalMilliseconds;
             Stopwatch stopwatch = Stopwatch.StartNew();
