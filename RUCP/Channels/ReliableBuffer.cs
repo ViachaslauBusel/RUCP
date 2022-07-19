@@ -7,13 +7,11 @@ namespace RUCP.Channels
 {
     internal sealed class ReliableBuffer : Buffer
     {
-		private Client m_master;
 
 		//Буфер для хранения полученных пакетов, хранит порядковый номер полученного пакета
 		private ushort[] m_receivedPackages;
-		internal ReliableBuffer(Client client, int size) : base(size)
+		internal ReliableBuffer(Client client, int size) : base(client, size)
 		{
-			m_master = client;
 			m_receivedPackages = new ushort[size];
 			m_receivedPackages[0] = ushort.MaxValue;
 		}
@@ -37,11 +35,11 @@ namespace RUCP.Channels
 				if (relative > 0)
 				{
 					m_receivedPackages[index] = (ushort)sequence;
-					m_master.Statistic.ReceivedPackets++;
+					m_owner.Statistic.ReceivedPackets++;
 
-					m_master.HandlerPack(pack);
+					m_owner.HandlerPack(pack);
 				}
-				else m_master.Statistic.ReacceptedPackets++;
+				else m_owner.Statistic.ReacceptedPackets++;
 			}
 			return true;
 		}

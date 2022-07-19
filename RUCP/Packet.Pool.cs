@@ -39,19 +39,11 @@ namespace RUCP
         /// </summary>
         public void Dispose()
         {
-            //Cannot insert in pool a packet that is in the send buffer
-            if (m_sendCicle != 0) return;
-            ForcedDispose();
-        }
-
-        internal void ForcedDispose()
-        {
-            //  Console.WriteLine($"пакет:[{Sequence}]->Освобожден");
             lock (m_poolLocker)
             {
                 //The packet is already in the pool
                 if (m_inPool) return;
-                m_dataAccess = DATA.Access.Lock;
+                m_dataAcces = DATA.DataAccess.Lock;
                 m_inPool = true;
                 m_next = m_head;
                 m_head = this;

@@ -16,6 +16,10 @@ namespace RUCP
         /// <summary>
         /// Ожидается соединение
         /// </summary>
-        LISTENING = 4
+        LISTENING = 4,
+        /// <summary>
+        /// Waiting for connection to close
+        /// </summary>
+        CLOSE_WAIT = 8
     }
 }

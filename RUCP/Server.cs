@@ -11,7 +11,7 @@ namespace RUCP
 {
 	public sealed class Server : IServer
     {
-		private Func<IProfile> m_createProfile;
+		private Func<BaseProfile> m_createProfile;
 
 		private ISocket m_socket;
 		private ClientList m_clients;
@@ -61,12 +61,12 @@ namespace RUCP
 			return m_clients.RemoveClient(client);
         }
 
-		public void SetHandler(Func<IProfile> han)
+		public void SetHandler(Func<BaseProfile> han)
 		{
 			m_createProfile = han;
 		}
 
-	    IProfile IServer.CreateProfile()
+	    BaseProfile IServer.CreateProfile()
 		{
 			return m_createProfile.Invoke();
 		}
@@ -143,10 +143,13 @@ namespace RUCP
 					int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref senderRemote);
 					availableBytes -= receiveBytes;
 					packet.InitData(receiveBytes);
-					packet.InitClient(m_clients.GetClient((IPEndPoint)senderRemote));
-					
+					Client client = m_clients.GetClient((IPEndPoint)senderRemote);
+					//packet.InitClient();
+				
 
-						PacketHandler.Process(this, packet);
+
+
+						PacketHandler.Process(this, client, packet);
 					
 
 				}
@@ -182,7 +185,7 @@ namespace RUCP
 					int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref remoteSender);
 					Client client = m_clients.GetClient((IPEndPoint)remoteSender);
 					packet.InitData(receiveBytes);
-					packet.InitClient(client);
+				//	packet.InitClient(client);
 
 					//m_processPackets++;
 
@@ -191,18 +194,18 @@ namespace RUCP
 						try
 						{
 						
-							PacketHandler.Process(this, packet);
+							PacketHandler.Process(this, client, packet);
 						}
 						catch (BufferOverflowException)
 						{
 							CallException(new Exception($"The client:{client.ID} was disconnected due to a buffer overflow"));
-							client.Close();
+							client.CloseConnection(DisconnectReason.BufferOverflow);
 						}
 						catch (Exception e)
 						{
 							//CallException(new Exception($"Client:{client.ID} was disconnected due to an unhandled exception"));
 							if (!client.HandleException(e))
-							{ client.Close(); }
+							{ client.CloseConnection(DisconnectReason.UnhandledException); }
 							//CallException(e);
 						}
 						
@@ -243,7 +246,7 @@ namespace RUCP
 				foreach (Client client in m_clients)
 				{
 					//Отправка клиенту команды на отключение и очистка списка клиентов
-					client.CloseConnection(sendDisconnectCMD: true);
+					client.CloseConnection(DisconnectReason.NormalClosed, true);
 				}
 				
 				m_resender?.Stop();
@@ -270,6 +273,6 @@ namespace RUCP
 			
 		}
 
-      
+       
     }
 }

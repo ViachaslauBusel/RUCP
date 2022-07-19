@@ -108,14 +108,17 @@ namespace RUCP.ServerSide
 		/// </summary>
 		internal bool RemoveClient(Client client)
 		{
-			 if(m_list_client.TryRemove(client.ID, out ClientSlot slot))
-            {
-				if(m_head == slot) { m_head = m_head.PrevSlot; }
+			if (m_list_client.TryRemove(client.ID, out ClientSlot slot))
+			{
+				lock (m_headLock)
+				{
+					if (m_head == slot) { m_head = m_head.PrevSlot; }
 
-				if (slot.NextSlot != null) { slot.NextSlot.PrevSlot = slot.PrevSlot; }
-				if (slot.PrevSlot != null) { slot.PrevSlot.NextSlot = slot.NextSlot; }
-				slot.NextSlot = null;
-				slot.PrevSlot = null;
+					if (slot.NextSlot != null) { slot.NextSlot.PrevSlot = slot.PrevSlot; }
+					if (slot.PrevSlot != null) { slot.PrevSlot.NextSlot = slot.NextSlot; }
+					slot.NextSlot = null;
+					slot.PrevSlot = null;
+				}
 				return true;
             }
 			return false;

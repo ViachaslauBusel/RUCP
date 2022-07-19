@@ -6,7 +6,7 @@ using System.Text;
 
 namespace RUCP
 {
-    public class UnityProfile : IProfile
+    public class UnityProfile : BaseProfile
     {
         private ConcurrentQueue<Packet> m_pipeline = new ConcurrentQueue<Packet>();
         private HandlersStorage<Action<Packet>> m_handlersStorage = new HandlersStorage<Action<Packet>>();
@@ -15,10 +15,30 @@ namespace RUCP
         /// <summary>Доступно пакетов для обработки</summary>
         public int AvailablePackets => m_pipeline.Count;
 
-        public bool HandleException(Exception exception)
+        public override void ChannelRead(Packet pack)
+        {
+            m_pipeline.Enqueue(pack);
+        }
+
+        public override void CheckingConnection()
+        {
+           
+        }
+
+        public override void CloseConnection(DisconnectReason reason)
+        {
+            Console.WriteLine($"Client -> Connection closed with result -> {reason}");
+        }
+
+        public override bool HandleException(Exception exception)
         {
             Console.WriteLine($"Client: Exception caught:{exception}");
             return true;
+        }
+
+        public override void OpenConnection()
+        {
+            Console.WriteLine($"Client -> Connection open");
         }
 
         /// <summary>
@@ -31,30 +51,12 @@ namespace RUCP
             {
                 if (m_pipeline.TryDequeue(out Packet packet))
                 {
-                    m_handlersStorage.GetHandler(packet.ReadType())?.Invoke(packet);
+                    m_handlersStorage.GetHandler(packet.OpCode)?.Invoke(packet);
                 }
                 else return;
             }
         }
 
-        void IProfile.ChannelRead(Packet pack)
-        {
-            m_pipeline.Enqueue(pack);
-        }
-
-        void IProfile.CheckingConnection()
-        {
-
-        }
-
-        void IProfile.CloseConnection()
-        {
-          //  Console.WriteLine("CloseConnection");
-        }
-
-        void IProfile.OpenConnection()
-        {
-        //    Console.WriteLine("OpenConnection");
-        }
+      
     }
 }

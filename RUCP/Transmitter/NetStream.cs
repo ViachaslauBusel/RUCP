@@ -64,7 +64,7 @@ namespace RUCP.Transmitter
     //}
     public sealed class NetStream : IDisposable
     {
-        private Client m_client;
+        private Client m_owner;
         private Packet m_outData;
     //    private FlushRequest m_flushRequest;
         private object m_locker = new object();
@@ -73,11 +73,10 @@ namespace RUCP.Transmitter
 
         public NetStream(Client client)
         {
-            m_client = client;
+            m_owner = client;
        //     m_flushRequest = new FlushRequest(m_locker, () => Flush());
 
             m_outData = Packet.Create();
-            m_outData.InitClient(client);
             m_outData.TechnicalChannel = TechnicalChannel.Stream;
           
         }
@@ -102,7 +101,6 @@ namespace RUCP.Transmitter
             while(inData.AvailableBytesForReading > 0)
             {
                 Packet packet = Packet.Create();
-                packet.InitClient(m_client);
                 int readBytes = inData.ReadBytesIn(packet.Data);
 
                 packet.InitData(readBytes);
@@ -120,10 +118,9 @@ namespace RUCP.Transmitter
              //   m_flushRequest.Abort();
                 if(m_outData.WrittenBytes == 0 ) return;//&& m_flushTickTime < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                // Console.WriteLine("Flush");
-                m_client.Server.Socket.SendTo(m_outData, m_client.RemoteAddress);
+                m_owner.WriteInSocket(m_outData);
              //   Console.WriteLine($"Send to remote address");
                 m_outData.Reset();
-                m_outData.InitClient(m_client);
                 m_outData.TechnicalChannel = TechnicalChannel.Stream;
             }
         }

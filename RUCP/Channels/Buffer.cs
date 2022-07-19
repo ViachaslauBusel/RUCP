@@ -1,16 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace RUCP.Channels
 {
-	internal class Buffer
+    internal class Buffer
 	{
+	
 		/// <summary>
 		/// размер окна нумерации пакетов
 		/// </summary>
 		internal const int SEQUENCE_WINDOW_SIZE = 65_536;
 		internal const int HALF_NUMBERING_WINDOW_SIZE = SEQUENCE_WINDOW_SIZE / 2;
+
+		protected Client m_owner;
 
 		/// <summary>Буффер для хранения отправленных пакетов</summary>
 		private Packet[] m_sentPackages;
@@ -19,8 +20,9 @@ namespace RUCP.Channels
 
 
 
-		internal Buffer(int size)
+		internal Buffer(Client client, int size)
 		{
+			m_owner = client;
 			m_sentPackages = new Packet[size];
 		}
 
@@ -34,31 +36,35 @@ namespace RUCP.Channels
 
 					if (m_sentPackages[index] == null) continue;
 
-					Client client = m_sentPackages[index].Client;
-					//TODO fix bug -> Something went wrong/ Client cannot be null 
-					if (client == null) {  continue; }
-					if (!client.isConnected())
+                    //If the client is disconnected, dispose all packets in the buffer without sending
+                    if (!m_owner.isConnected())
                     {
-						m_sentPackages[index].ForcedDispose();
-						m_sentPackages[index] = null;
+                        m_sentPackages[index].Dispose();
+                        m_sentPackages[index] = null;
 
-						continue;
-					}
+                        continue;
+                    }
 
 
                     //If the waiting time for confirmation of receipt of the package by the client exceeds timeout, disconnect the client
-                    if (m_sentPackages[index].CalculatePing() > m_sentPackages[index].Client.Server.Options.DisconnectTimeout)
+                    if (m_sentPackages[index].CalculatePing() > m_owner.Server.Options.DisconnectTimeout)
                     {
-                        Console.WriteLine($"[!]Disconect time:{m_sentPackages[index].CalculatePing()},  SentPackets:{m_sentPackages[index].Client.Statistic.SentPackets}, ResentPackets:{m_sentPackages[index].Client.Statistic.ResentPackets}");
+                        Console.WriteLine($"[!]Disconect time:{m_sentPackages[index].CalculatePing()},  SentPackets:{m_owner.Statistic.SentPackets}, ResentPackets:{m_owner.Statistic.ResentPackets}");
 
-						m_sentPackages[index].Client.CloseConnection();
-						m_sentPackages[index].ForcedDispose();
-						m_sentPackages[index] = null;
+						m_owner.CloseConnection(DisconnectReason.TimeoutExpired);
+						//m_sentPackages[index].Dispose();
+						//m_sentPackages[index] = null;
 	
-						continue;
+						return;
                     }
 
-                    m_sentPackages[index].Resend();
+					if (m_sentPackages[index].GetDelay() <= 0)
+					{
+						//Console.WriteLine("resend");
+						m_sentPackages[index].WriteSendTime(m_owner.Statistic.GetTimeoutInterval());
+						m_owner.Stream.Write(m_sentPackages[index]);
+						m_owner.Statistic.ResentPackets++;
+					}
 				}
             }
 
@@ -75,37 +81,37 @@ namespace RUCP.Channels
 				int index = sequence % m_sentPackages.Length;
 				if (m_sentPackages[index] != null && m_sentPackages[index].Sequence == sequence)
 				{
+					//If this is the expected packet sequence number, reduce the window of unacknowledged packets
 					if (m_sequenceConfirm == sequence)
 					{ m_sequenceConfirm = (m_sequenceConfirm + 1) % SEQUENCE_WINDOW_SIZE; }
-					//Console.WriteLine($"пакет:[{sequence}]->ACK подвержден");
-					m_sentPackages[index].Client.Statistic.Ping = m_sentPackages[index].CalculatePing();
-					m_sentPackages[index].ACK = true;
-					m_sentPackages[index].ForcedDispose();
+
+					m_owner.Statistic.Ping = m_sentPackages[index].CalculatePing();
+
+					m_sentPackages[index].Dispose();
 					m_sentPackages[index] = null;
 				}
 			}
 		}
 		/// <summary>
-		/// Вставка в буффер не подтвержденных пакетов
+		/// Insert in buffer of unacknowledged packets to resend in case of loss
 		/// </summary>
 		internal void Insert(Packet packet)
 		{
 			lock (m_sentPackages)
 			{
-			
+
+				packet.WriteSendTime(m_owner.Statistic.GetTimeoutInterval()); ;
+
 				int index = m_sequenceSent % m_sentPackages.Length;
-				//Если пакет в буффере еще не подтвержден и требует переотправки
+				//If the packet in the buffer has not yet been acknowledged and needs to be resent
 				if (m_sentPackages[index] != null)
 				{
-					throw new BufferOverflowException($"[{(packet.Client.isRemoteHost ? "client" : "server")}]send buffer overflow. Try sent sequence:{m_sequenceSent}, in buffer sequence:{m_sentPackages[index].Sequence}, ch:{m_sentPackages[index].TechnicalChannel} time:{m_sentPackages[index].CalculatePing()}");
+					throw new BufferOverflowException($"[{(m_owner.isRemoteHost ? "client" : "server")}]send buffer overflow. Try sent sequence:{m_sequenceSent}, in buffer sequence:{m_sentPackages[index].Sequence}, ch:{m_sentPackages[index].TechnicalChannel} time:{m_sentPackages[index].CalculatePing()}");
 				}
 				packet.Sequence = (ushort)m_sequenceSent;
 				m_sentPackages[index] = packet;
 
 				m_sequenceSent = (m_sequenceSent + 1) % SEQUENCE_WINDOW_SIZE;
-
-
-				//Console.WriteLine($"пакет:[{packet.Sequence}]->отправлен");
 			}
 		}
 

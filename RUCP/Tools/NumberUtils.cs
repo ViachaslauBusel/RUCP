@@ -36,13 +36,13 @@ namespace RUCP.Tools
         }
 
         /// <summary>
-        ///  Возвращает отрицательное число если X < Y, 0 если X == Y, если X > Y возвращает положительное число
+        /// Returns a negative number if X < Y, 0 if X == Y, if X > Y returns a positive number
         /// </summary>
         /// <returns></returns>
         public static int RelativeSequenceNumber(int x, int y)
         {
-            Debug.Assert(x <= Buffer.SEQUENCE_WINDOW_SIZE & x >= 0, $"NumberUtils: параметр X:{x} имеет недопустимое значение");
-            Debug.Assert(y <= Buffer.SEQUENCE_WINDOW_SIZE & y >= 0, $"NumberUtils: параметр Y:{y} имеет недопустимое значение");
+            Debug.Assert(x <= Buffer.SEQUENCE_WINDOW_SIZE & x >= 0, $"NumberUtils: Parameter X:{x} has an invalid value");
+            Debug.Assert(y <= Buffer.SEQUENCE_WINDOW_SIZE & y >= 0, $"NumberUtils: Parameter Y:{y} has an invalid value");
             return (x - y + Buffer.SEQUENCE_WINDOW_SIZE + Buffer.HALF_NUMBERING_WINDOW_SIZE) % Buffer.SEQUENCE_WINDOW_SIZE - Buffer.HALF_NUMBERING_WINDOW_SIZE;
         }
     }

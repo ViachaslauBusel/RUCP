@@ -10,23 +10,22 @@ namespace RUCP.Channels
 		struct DiscardNode
 		{
 			public ushort Sequence { get; set; }
-			public short Type { get; private set; }
+			public short OpCode { get; private set; }
 
 			public void Set(Packet packet)
 			{
 				Sequence = packet.Sequence;
-				Type = (short)packet.ReadType();
+				OpCode = packet.OpCode;
 			}
 		}
-		private Client m_master;
+
 		//Буфер для хранения полученных пакетов, хранит порядковый номер полученного пакета
 		private DiscardNode[] m_receivedPackages;
 		/// <summary>Ожидаемый порядковый номер получаемого пакета</summary>
 		private volatile int m_nextExpectedSequenceNumber = 0;
 
-		internal DiscardBuffer(Client client, int size) : base(size)
+		internal DiscardBuffer(Client client, int size) : base(client, size)
 		{
-			this.m_master = client;
 			m_receivedPackages = new DiscardNode[size];
 			m_receivedPackages[0].Sequence = ushort.MaxValue;
 		}
@@ -62,18 +61,18 @@ namespace RUCP.Channels
 						// Пакет пришел не первым, ищем пакеты с таким же типом, если они есть, отбрасываем этот пакет
 						else
 						{
-							int packetType = packet.ReadType();
+							int opCode = packet.OpCode;
 							for (int x = (sequence + 1) % SEQUENCE_WINDOW_SIZE; NumberUtils.RelativeSequenceNumber(x, m_nextExpectedSequenceNumber) <= 0; x = (x + 1) % SEQUENCE_WINDOW_SIZE)//Перебор пакетов пришедших после
 							{
 								int xBuffer = x % m_receivedPackages.Length;
 						
 								//Если пакет совпадает по типу и был отправлен после этого пакета, пакет не подлежит обработке
-								if (packetType == m_receivedPackages[xBuffer].Type && NumberUtils.RelativeSequenceNumber(m_receivedPackages[xBuffer].Sequence, sequence) > 0)
+								if (opCode == m_receivedPackages[xBuffer].OpCode && NumberUtils.RelativeSequenceNumber(m_receivedPackages[xBuffer].Sequence, sequence) > 0)
 								{ return true; }
 							}
 						}
 						//Discard <<
-						m_master.HandlerPack(packet);
+						m_owner.HandlerPack(packet);
 					}
 				}
 				return true;

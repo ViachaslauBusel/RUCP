@@ -31,11 +31,12 @@ namespace RUCP.DATA
         protected int m_index = 0;
         /// <summary>Number of bytes used in buffer by data</summary>
         protected int m_realLength;
-        protected Access m_dataAccess = Access.Lock;
+        protected DataAccess m_dataAcces = DataAccess.Lock;
 
 
 
 
+        public DataAccess DataAccess => m_dataAcces;
         internal byte[] Data => m_data;
         /// <summary>Number of bytes used in buffer by data</summary>
         public int Length => m_realLength;
@@ -52,7 +53,7 @@ namespace RUCP.DATA
         internal void InitData(int length) 
         { 
             m_realLength = length;
-            m_dataAccess = Access.Read;
+            m_dataAcces = DataAccess.Read;
         }
 
     }

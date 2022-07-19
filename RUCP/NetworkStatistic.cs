@@ -21,8 +21,6 @@ namespace RUCP
         private int counter = 0;
 
 
-        public NetworkStatus Status { get; internal set; } = NetworkStatus.LISTENING;
-
 
 
         public int ReceivedPackets { get; internal set; }
@@ -74,7 +72,7 @@ namespace RUCP
         }
 
         /// <summary>
-        /// Время до повторной отправки пакета при патери пакетов
+        /// Time to resend a packet on packet loss
         /// </summary>
         internal int GetTimeoutInterval() => m_estimatedRTT + 5 * ((m_devRTT < 4) ? 4 : m_devRTT);
 

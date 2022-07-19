@@ -1,8 +1,10 @@
 ﻿using RUCP.Channels;
 using RUCP.Cryptography;
+using RUCP.DATA;
 using RUCP.Tools;
 using RUCP.Transmitter;
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -10,38 +12,65 @@ namespace RUCP
 {
     public sealed class Client : IDisposable
     {
-        /// <summary>Выступает в роли моста, между представлением клиента, на стороне клиента и сервере</summary>
+        /// <summary>Acts as a bridge between remote client and server client</summary>
         private IServer m_server;
-        private IProfile m_profile;
+        private BaseProfile m_profile;
         private IPEndPoint m_remoteAdress;
         private NetStream m_stream;
-        private NetworkStatistic m_network = new NetworkStatistic();
+        private NetworkStatus m_status = NetworkStatus.CLOSED;
+        private NetworkStatistic m_statistic = new NetworkStatistic();
         private QueueBuffer m_bufferQueue;
         private ReliableBuffer m_bufferReliable;
         private DiscardBuffer m_bufferDiscard;
         private Object m_locker = new Object();
         private TaskPipeline m_taskPipeline;
-        public long ID { get; private set; }
+        private Packet m_disconnectPacket;
+      
 
-       
 
-        /// <summary>false - этот клиент подключен к серверу на прямую. true - это удаленный  клиент, подключен к серверу через сеть</summary>
-        public bool isRemoteHost { get; private set; }
+
+      
         internal RSA CryptographerRSA { get; private set; }
         internal AES CryptographerAES { get; private set; } 
-
         internal IServer Server => m_server;
-        /// <summary>Адрес удаленного узла с которым соединён этот клиент</summary>
+
+
+        public long ID { get; private set; }
+        /// <summary>
+        /// false - this client is directly connected to the server(server client). true - this is a remote client connected to the server via the network(remote client)
+        /// </summary>
+        public bool isRemoteHost { get; private set; }
+
+
+        /// <summary>The address of the remote host to which this client is connected</summary>
         public IPEndPoint RemoteAddress => m_remoteAdress;
         public NetStream Stream => m_stream;    
-        public NetworkStatistic Statistic => m_network;    
-        public IProfile Profile => m_profile;
+        public NetworkStatistic Statistic => m_statistic;
+        public NetworkStatus Status => m_status;
+        public BaseProfile Profile => m_profile;
+
+
+        public Packet GetDisconnectPacket()
+        {
+            lock (m_locker)
+            {
+                if (m_disconnectPacket == null)
+                {
+                    m_disconnectPacket = Packet.Create();
+                    m_disconnectPacket.TechnicalChannel = TechnicalChannel.Disconnect;
+                }
+                return m_disconnectPacket;
+            }
+        }
 
 
 
-        //Этот клиент создается сервером и не может быть повторно использован
+
+
+        //This client is created by the server and cannot be reused
         internal Client(IServer server, IPEndPoint adress)
         {
+            m_status = NetworkStatus.LISTENING;
             isRemoteHost = false;
             m_server = server;
             m_taskPipeline = server.TaskPool.CreatePipeline(this);
@@ -52,7 +81,7 @@ namespace RUCP
             CryptographerAES = new AES();
 
             ID = SocketInformer.GetID(adress);
-            m_profile = server.CreateProfile();
+            SetHandler(() => server.CreateProfile());
 
             m_bufferReliable = new ReliableBuffer(this, 512);
             m_bufferQueue = new QueueBuffer(this, 512);
@@ -67,8 +96,8 @@ namespace RUCP
         public void ConnectTo(string address, int port, ServerOptions options = null)
         {
             if(m_server != null) { throw new Exception("The client is already connected to the remote host"); }
-            if (m_profile == null) { throw new Exception("Профиль для обработки пакетов не задан"); }
-            if(options == null) options =new ServerOptions();
+            if (m_profile == null) { throw new Exception("Client profile not set"); }
+            if(options == null) options = new ServerOptions();
 
             CryptographerRSA = new RSA();
             CryptographerAES = new AES();
@@ -84,12 +113,13 @@ namespace RUCP
             ID = SocketInformer.GetID(m_remoteAdress);
         }
 
-        public void SetHandler(Func<IProfile> getHandler)
+        public void SetHandler(Func<BaseProfile> getHandler)
         {
             m_profile = getHandler.Invoke();
+            m_profile.TechnicalInit(this);
         }
 
-        internal bool isConnected() => m_network.Status == NetworkStatus.CONNECTED;
+        internal bool isConnected() => m_status == NetworkStatus.CONNECTED;
 
         internal void BufferTick()
         {
@@ -97,19 +127,10 @@ namespace RUCP
             m_bufferQueue?.Tick();
             m_bufferDiscard?.Tick();
         }
-        internal void OpenConnection()
-        {
-            lock (m_locker)
-            {
-               // Console.WriteLine($"Open connection:{isRemoteHost}");
-                if(m_network.Status != NetworkStatus.LISTENING) { throw new Exception("Error opening connection"); }
-                m_network.Status = NetworkStatus.CONNECTED;
-                m_profile.OpenConnection();
-            }
-           
-        }
+
+
         /// <summary>
-        /// Передает пакеты в Обрабатывающий класс
+        /// Passes packets to the Handling method
         /// </summary>
         internal void HandlerPack(Packet packet)
         {
@@ -129,23 +150,13 @@ namespace RUCP
             m_taskPipeline.Insert(new Task(act));
         }
 
-        /// <summary>
-        /// Отсылает клиенту команду на отключения
-        /// </summary>
-        internal void SendDisconnectCMD()
-        {
-            Packet packet = Packet.Create();
-            packet.TechnicalChannel = TechnicalChannel.Disconnect;
-            packet.InitClient(this);
-            packet.SendImmediately();
-        }
         private void SendACK(ushort sequence, int channel)
         {
             Packet ack = Packet.Create();
-            ack.InitClient(this);
             ack.TechnicalChannel = channel;
             ack.Sequence = sequence;
-            ack.Send();
+            Stream.Write(ack);
+            ack.Dispose();
         }
         //Подтверждение о принятии пакета клиентом
         internal void ConfirmReliableACK(int sequence) { m_bufferReliable.ConfirmAsk(sequence); }
@@ -160,13 +171,13 @@ namespace RUCP
             switch (packet.Channel)
             {
                 case Channel.Reliable:
-                    m_bufferReliable.Insert(packet);
+                    m_bufferReliable?.Insert(packet);
                     return true;
                 case Channel.Queue:
-                    m_bufferQueue.Insert(packet);
+                    m_bufferQueue?.Insert(packet);
                     return true;
                 case Channel.Discard:
-                    m_bufferDiscard.Insert(packet);
+                    m_bufferDiscard?.Insert(packet);
                     return true;
 
                 default: return false;
@@ -208,92 +219,181 @@ namespace RUCP
             }
         }
 
-        /// <summary>
-        /// Close connection to remote host
-        /// </summary>
-        public void Close()
+
+        public void Send(Packet packet, short opCode, Channel channel)
         {
-            try
-            {
-                CloseConnection(sendDisconnectCMD: true);
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine(e);
-            }
-
-
-        }
-        /// <summary>
-        /// Removing a client from the list of connections and calling the CloseConnection method in the profile
-        /// </summary>
-        internal void CloseConnection(bool sendDisconnectCMD = true)
-        {
-            if (sendDisconnectCMD && NetworkStatus.LISTENING.HasFlag(m_network.Status))
-            { SendDisconnectCMD(); }
-
-            if (CloseIf(NetworkStatus.CONNECTED | NetworkStatus.LISTENING))
-            { Dispose(); }
-        }
-        internal bool CloseIf(NetworkStatus status)
-        {
-            lock (m_locker)
-            {
-                if (status.HasFlag(m_network.Status))
-                {
-                //    if (isRemoteHost) Console.WriteLine($"status:{status}");
-                    m_network.Status = NetworkStatus.CLOSED;
-
-                    if (m_server.RemoveClient(this)) { m_profile?.CloseConnection(); }
-
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        public void Send(Packet packet)
-        {
-            packet.InitClient(this);
-            packet.Send();
+            packet.OpCode = opCode;
+            packet.TechnicalChannel = (int)channel;
+            Send(packet);
         }
         public void Send(Packet packet, Channel channel)
         {
-            packet.InitClient(this);
             packet.TechnicalChannel = (int)channel;
-            packet.Send();
+            Send(packet);
         }
-        public void Dispose()
+        public NetStream Send(Packet packet)
+        {
+            if (packet.DataAccess != DataAccess.Write)
+            {
+                throw new Exception($"Packet is blocked, sending is not possible");
+            }
+            if(Status != NetworkStatus.CONNECTED)
+            {
+                throw new Exception($"Attempt to write to a closed socket");
+            }
+
+            Packet keepPacket = Packet.Create(packet);
+
+            if (keepPacket.Encrypt) CryptographerAES.Encrypt(keepPacket);
+
+            //Pasting into the buffer of sent packets for further confirmation of the successful delivery of the packet
+            if (InsertBuffer(keepPacket))
+            {
+                Statistic.SentPackets++;;
+            }
+
+
+            Stream?.Write(keepPacket);
+
+
+            return Stream;
+        }
+        internal void WriteInSocket(Packet packet)
+        {
+            Server?.Socket?.SendTo(packet, RemoteAddress);
+        }
+
+
+        #region Connection status management
+        /// <summary>
+        /// Close connection to remote host
+        /// </summary>
+        public async Task Close()
+        {
+            StartClosingCycle();
+
+            while (m_status != NetworkStatus.CLOSED)
+            {
+                await Task.Delay(1);
+            }
+        }
+
+        internal bool StartListening()
         {
             lock (m_locker)
             {
-                CloseIf(NetworkStatus.CONNECTED | NetworkStatus.LISTENING);
-                if (m_network.Status == NetworkStatus.CLOSED)
+                if ((NetworkStatus.CLOSED).HasFlag(m_status))
                 {
-
-
-
-                    // m_remoteAdress = null;
-                    m_stream?.Dispose();
-                    // m_stream = null;
-
-                    m_bufferReliable?.Dispose();
-                    m_bufferQueue?.Dispose();
-                    m_bufferDiscard?.Dispose();
-
-                    m_bufferReliable = null;
-                    m_bufferQueue = null;
-                    m_bufferDiscard = null;
-
-                    CryptographerAES?.Dispose();
-                    CryptographerRSA?.Dispose();
-
-                    CryptographerAES = null;
-                    CryptographerRSA = null;
-
-                    m_server = null;
+                    m_status = NetworkStatus.LISTENING;
+                    return true;
                 }
             }
+                return false;
+        }
+        internal bool TryOpenConnection()
+        {
+            lock (m_locker)
+            {
+                if ((NetworkStatus.LISTENING).HasFlag(m_status))
+                {
+                    m_status = NetworkStatus.CONNECTED;
+
+                    if (m_server.AddClient(this))
+                    {
+                        m_profile.OpenConnection();
+                    }
+                    else
+                    {
+                        m_status = NetworkStatus.CLOSED;
+                    }
+                }
+            }
+            return true;
+        }
+        internal void StartClosingCycle()
+        {
+            lock (m_locker)
+            {
+                if ((NetworkStatus.LISTENING | NetworkStatus.CONNECTED).HasFlag(m_status))
+                {
+                    m_status = NetworkStatus.CLOSE_WAIT;
+
+                    Packet packet = GetDisconnectPacket();
+                    WriteInSocket(packet);
+                    packet.WriteSendTime(Statistic.GetTimeoutInterval());
+                }
+            }
+        }
+        /// <summary>
+        /// Закрывает сокет для отправки\приема. Останавливает все службы для игрока
+        /// </summary>
+        internal void CloseConnection(DisconnectReason reason, bool sendNotifications = false)
+        {
+            lock (m_locker)
+            {
+                if ((NetworkStatus.LISTENING | NetworkStatus.CONNECTED | NetworkStatus.CLOSE_WAIT).HasFlag(m_status))
+                {
+
+                    m_status = NetworkStatus.CLOSED;
+                    try
+                    {
+                        if (sendNotifications)
+                        {
+                            WriteInSocket(GetDisconnectPacket());
+                        }
+                    } catch { }
+                    //Provides single call conditions
+                    if (m_server.RemoveClient(this))
+                    {
+                        m_profile?.CloseConnection(reason);
+                    }
+
+                  
+                }
+            }
+               
+        }
+        
+        
+
+
+      
+      
+
+      
+
+        #endregion
+        public void Dispose()
+        {
+            //lock (m_locker)
+            //{
+            //    CloseIf(NetworkStatus.CONNECTED | NetworkStatus.LISTENING);
+            //    if (m_status == NetworkStatus.CLOSED)
+            //    {
+
+
+
+            //        // m_remoteAdress = null;
+            //        m_stream?.Dispose();
+            //        // m_stream = null;
+
+            //        m_bufferReliable?.Dispose();
+            //        m_bufferQueue?.Dispose();
+            //        m_bufferDiscard?.Dispose();
+
+            //        m_bufferReliable = null;
+            //        m_bufferQueue = null;
+            //        m_bufferDiscard = null;
+
+            //        CryptographerAES?.Dispose();
+            //        CryptographerRSA?.Dispose();
+
+            //        CryptographerAES = null;
+            //        CryptographerRSA = null;
+
+            //        m_server = null;
+            //    }
+            //}
         }
     }
 }

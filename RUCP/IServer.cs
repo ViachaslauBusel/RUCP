@@ -2,6 +2,7 @@
 using RUCP.Transmitter;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 
 namespace RUCP
@@ -10,6 +11,8 @@ namespace RUCP
     {
         ISocket Socket { get; }
         Resender Resender { get; }
+
+
         TaskPool TaskPool { get; }
         ClientList ClientList { get; }
         ServerOptions Options { get; }
@@ -17,6 +20,6 @@ namespace RUCP
         void CallException(Exception exception);
         bool AddClient(Client client);
         bool RemoveClient(Client client);
-        IProfile CreateProfile();
+        BaseProfile CreateProfile();
     }
 }

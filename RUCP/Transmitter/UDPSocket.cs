@@ -54,15 +54,7 @@ namespace RUCP.Transmitter
                 }
             }
         }
-        public void Send(Packet packet)
-        {
-           // lock (m_locker)
-            {
 
-              //  m_socket.Send(packet.Data, packet.Length, SocketFlags.None);
-                SendTo(packet, packet.Client.RemoteAddress);
-            }
-        }
         public void SendTo(byte[] data, int size, IPEndPoint remoteAdress)
         {
            // lock (m_locker)

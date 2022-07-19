@@ -11,7 +11,7 @@ namespace RUCP.Transmitter
         private IServer m_master;
         private Thread m_thread;
         private volatile bool m_work = true;
-        private BlockingQueue<Packet> m_elements = new BlockingQueue<Packet>();
+     //   private BlockingQueue<Packet> m_elements = new BlockingQueue<Packet>();
 
         private Resender(IServer server)
         {
@@ -38,10 +38,30 @@ namespace RUCP.Transmitter
             {
                 try
                 {
-                    foreach(Client c in m_master.ClientList)
+                    foreach (Client c in m_master.ClientList)
                     {
+                      
+                        if (c.Status == NetworkStatus.CLOSE_WAIT)
+                        {
+                            Packet disconnectCMD = c.GetDisconnectPacket();
+                            //Отсылаем пакет с запросом на отключения каждые н сек в течении н секунд
+
+                            //Время ожидания ответа от удаленого узла истекло
+                            if ((DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - disconnectCMD.SendTime) > 3_000)
+                            {
+                                c.CloseConnection(DisconnectReason.TimeoutExpired);
+                            }
+                            else if (disconnectCMD.ResendTime >= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                            {
+                                Console.WriteLine("Send disconnect CMD");
+                                c.WriteInSocket(disconnectCMD);
+                                disconnectCMD.WriteSendTime(c.Statistic.GetTimeoutInterval());
+                            }
+                        }
+
                         c.BufferTick();
                         c.Stream?.Flush();//TODO disconnect
+
                     }
                     Thread.Sleep(1);
                   //  Packet packet = m_elements.Take();

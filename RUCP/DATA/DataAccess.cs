@@ -4,7 +4,7 @@ using System.Text;
 
 namespace RUCP.DATA
 {
-    public enum Access
+    public enum DataAccess
     {
         Lock,
         Read,

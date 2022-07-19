@@ -24,16 +24,14 @@ namespace RUCP.Channels
 			}
 		}
 
-		private Client m_master;
 		//Буфер для хранения полученных пакетов, хранит порядковый номер полученного пакета
 		private QueueNode[] m_receivedPackages;
 		/// <summary>Ожидаемый порядковый номер получаемого пакета</summary>
 		private volatile int m_nextExpectedSequenceNumber = 0;
 
 
-		internal QueueBuffer(Client client, int size) : base(size)
+		internal QueueBuffer(Client client, int size) : base(client, size)
 		{
-			this.m_master = client;
 			m_receivedPackages = new QueueNode[size];
 			m_receivedPackages[0].Sequence = ushort.MaxValue;
 		}
@@ -61,7 +59,7 @@ namespace RUCP.Channels
 
 					while (IsExpectedSequence(m_receivedPackages[index].Sequence))//Если номер пакета совпадает с ожидаемым
 					{
-						m_master.HandlerPack(m_receivedPackages[index].Value);//Обрабатываем, и смотрим в перед есть ли еще не обработанные пакеты
+						m_owner.HandlerPack(m_receivedPackages[index].Value);//Обрабатываем, и смотрим в перед есть ли еще не обработанные пакеты
 						m_receivedPackages[index].Free();
 
 						index = (index + 1) % m_receivedPackages.Length;//Порядковый номер следующего пакета в буфере

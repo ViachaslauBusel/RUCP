@@ -77,9 +77,8 @@ namespace RUCP.Transmitter
         private void CheckingConnection(Client client)
         {
             Packet pack = Packet.Create(Channel.Reliable);
-            pack.InitClient(client);
-            pack.WriteType(0);
-            pack.SendImmediately();
+            pack.OpCode = 0;
+            client.Send(pack);
         }
 
         internal void Stop()

@@ -10,55 +10,57 @@ namespace nTests
 {
     public class Channels
     {
-        class ServerProfile : IProfile
+        class ServerProfile : BaseProfile
         {
 
             private volatile int m_totalReadPacket = 0;
-            private Client m_client;
-            public void ChannelRead(Packet pack)
+
+
+            public override void ChannelRead(Packet pack)
             {
-                m_client = pack.Client;
-               
-                if (pack.ReadType() == 1)
+
+                if (pack.OpCode == 1)
                 {
                     m_totalReadPacket++;
                     Packet packet = Packet.Create(Channel.Reliable);
-                    packet.WriteType(1);
+                    packet.OpCode = 1;
                     packet.WriteInt(pack.ReadInt());
-                   PushPacket(pack.Client, packet);
+                    PushPacket(Owner, packet);
 
                 }
-             //   ThreadCount.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);
-              // Console.WriteLine($"peer:{pack.Client.ID}, th:{Thread.CurrentThread.ManagedThreadId}");
+                //   ThreadCount.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);
+                // Console.WriteLine($"peer:{pack.Client.ID}, th:{Thread.CurrentThread.ManagedThreadId}");
                 pack.Dispose();
             }
 
-            public void CheckingConnection()
+            public override void CheckingConnection()
             {
-
+            
             }
 
-            public void CloseConnection()
+
+            public override void CloseConnection(DisconnectReason reason)
             {
-                if(m_client != null)
-                Console.WriteLine($"Server -> m_totalReadPacket:{m_totalReadPacket}, {m_client.Statistic.ToString()}");
+
+                    Console.WriteLine($"Server -> m_totalReadPacket:{m_totalReadPacket}, {Owner.Statistic.ToString()}");
+                    Console.WriteLine($"Server -> Close reason:{reason}");
             }
 
-            public bool HandleException(Exception exception)
+            public override bool HandleException(Exception exception)
             {
                 Console.WriteLine($"Server: Exception caught:{exception}");
                 return true;
             }
 
-            public void OpenConnection()
+            public override void OpenConnection()
             {
-              //  Console.WriteLine("OpenConnection");
+                Console.WriteLine($"Owner:{Owner != null}");
             }
         }
 
 
         private Server m_server;
-        private Client[] m_clients = new Client[80];
+        private Client[] m_clients = new Client[2];
 
         private bool ForeachClients(Predicate<Client> predicate)
         {
@@ -85,7 +87,7 @@ namespace nTests
                     if (sw.Elapsed.TotalMilliseconds > 5_000)
                     {
 
-                        Console.WriteLine($"Не удалось отправить пакет");
+                        Console.WriteLine($"[{(client.isRemoteHost ? "Client":"Server")}]Не удалось отправить пакет");
                         throw new Exception("End");
                     }
                     //  Console.WriteLine("BufferOverflowException");
@@ -134,19 +136,20 @@ namespace nTests
 
             while (stopwatch.Elapsed.TotalMilliseconds < 3_000.0)
             {
-                if (ForeachClients((c) => c.Statistic.Status == NetworkStatus.CONNECTED))
+                if (ForeachClients((c) => c.Status == NetworkStatus.CONNECTED))
                 {
   
                     return;
                 }
             }
+            Array.ForEach(m_clients, (c) => Console.WriteLine($"Connection status: {c.Status}"));
             Assert.Fail();
         }
         [Test]
         public void TestConnection()
         {
-            Assert.True(ForeachClients((c) => c.Statistic.Status == NetworkStatus.CONNECTED));
-            Assert.True(ForeachClients((c) => { c.Dispose(); return true; }));
+            Assert.True(ForeachClients((c) => c.Status == NetworkStatus.CONNECTED));
+            Assert.True(ForeachClients((c) => c.Profile.Owner != null));
             Assert.True(ForeachClients((c) => { c.Close(); return true; }));
             m_server.Stop();
         }
@@ -166,7 +169,7 @@ namespace nTests
                 foreach (var c in m_clients)
                 {
                     Packet packet = Packet.Create(Channel.Reliable);
-                    packet.WriteType(1);
+                    packet.OpCode = 1;
                     packet.WriteInt(dataJ);
                     PushPacket(c, packet);
                 }//);   
@@ -248,7 +251,7 @@ namespace nTests
                 {
 
                     Packet packet = Packet.Create(Channel.Reliable);
-                    packet.WriteType(1);
+                    packet.OpCode = 1;
                     packet.WriteInt(j);
                     PushPacket(m_clients[0], packet);
 
@@ -318,7 +321,7 @@ namespace nTests
             {
                 while ((j - ((UnityProfile)m_clients[0].Profile).AvailablePackets) > 200) { Thread.Sleep(1); }
                 Packet packet = Packet.Create(Channel.Queue);
-                packet.WriteType(1);
+                packet.OpCode = 1;
                 packet.WriteInt(j);
                 PushPacket(m_clients[0], packet);
             }
@@ -375,7 +378,7 @@ namespace nTests
             for (int j = 0; j <= numberTest; j++)
             {
                 Packet packet = Packet.Create(Channel.Discard);
-                packet.WriteType(1);
+                packet.OpCode = 1;
                 packet.WriteInt(j);
                 PushPacket(m_clients[0], packet);
             }

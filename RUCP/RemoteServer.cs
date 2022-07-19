@@ -35,6 +35,7 @@ namespace RUCP
 
         internal RemoteServer(Client client, IPEndPoint iPEndPoint, ServerOptions options)
         {
+            if (!client.StartListening()) return;
             m_options = options;
             m_socket =  UDPSocket.CreateSocket();
             m_socket.Connect(iPEndPoint);
@@ -59,7 +60,7 @@ namespace RUCP
             th.Start();
 
         }
-        public IProfile CreateProfile()
+        public BaseProfile CreateProfile()
         {
             return null;
         }
@@ -89,17 +90,19 @@ namespace RUCP
             if (m_clients.RemoveClient(client))
             {
                 m_work = false;
-                Stop();
+                StopServices();
                 return true;
             }
             return false;
         }
 
-        private async void Stop()
+        private void StopServices()
         {
-            await Task.Run(() => m_resender?.Stop());
-            await Task.Run(() => m_cheking?.Stop());
-            await Task.Run(() => m_socket?.Close());
+           
+            m_work = false;
+            m_resender?.Stop();
+            m_cheking?.Stop();
+            m_socket?.Close();
         }
 
         /// <summary>
@@ -108,7 +111,6 @@ namespace RUCP
         private void Connector(Client client)
         {
             Packet packet = Packet.Create();
-            packet.InitClient(client);
             packet.TechnicalChannel = TechnicalChannel.Connection;
             packet.WriteFloat(Config.VESRSION);
             client.CryptographerRSA.WritePublicKey(packet);
@@ -116,17 +118,20 @@ namespace RUCP
 
                 int max_cicle = 20;//10 сек ожидание подключения
                 m_firstPing = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            while (client.Statistic.Status == NetworkStatus.LISTENING) //Ожидаем подключение
+            while (client.Status == NetworkStatus.LISTENING) //Ожидаем подключение
             {
                 if (--max_cicle < 0) { break; }
                 //Отпровляем пакет
-                Socket.Send(packet);
+                client.WriteInSocket(packet);
 
                 Thread.Sleep(500); //Ожидание пакета "подтверждение подключение" от сервера
             }
             packet.Dispose();
             //Закрыть если сервер так и не ответил
-            client.CloseIf(NetworkStatus.LISTENING);
+            if (client.Status == NetworkStatus.LISTENING)
+            {
+                client.CloseConnection(DisconnectReason.ConnectionFailed);
+            }
         }
 
 
@@ -136,61 +141,38 @@ namespace RUCP
             while (m_work)
             {
                 try
-                {          
+                {
                     //Создание нового пакета для хранение данных
                     Packet packet = Packet.Create();
 
                     //Считывание датаграм
                     int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref senderRemote);
+
                     packet.InitData(receiveBytes);
-                    packet.InitClient(m_master);
 
-                //    Console.WriteLine($"remote host receive packet.ch{packet.TechnicalChannel}");
-
-                    PacketHandler.Process(this, packet);
+                    PacketHandler.Process(this, m_master, packet);
 
                     m_master.Stream?.Flush();
 
-                   
-                }
-                //catch (SocketException e)
-                //{
-                //    //if (e.ErrorCode == 10004)
-                //    //    break;
-                //    //if (e.ErrorCode == 10054)
-                //    //    continue;
-                //    if (m_work)
-                //    {
-                //        // CallException(e);
-                //        if (m_master.HandleException(e))
-                //        { m_master.Close(); }
-                //    //    CallException(new Exception($"Client:{m_master.ID} was disconnected due to an unhandled exception"));
-                //    }
 
-                //}
+                }
                 catch (SocketException e)
                 {
                     //e.ErrorCode == 10054 The remote host forcibly terminated the existing connection
                     if (e.ErrorCode == 10054)
                     {
                         //TODO Handle the exception thrown by the local socket when sending a packet to a remote closed socket
-                        //CallException(new Exception($"The client:{remoteSender} was disconnected. Error code:{e.ErrorCode}"));
                         continue;
                     }
                     //if (e.ErrorCode != 10004 && e.ErrorCode != 4)
 
                     if (m_master.HandleException(e))
-                    { m_master.Close(); }
+                    { m_master.CloseConnection(DisconnectReason.InnerException, false); }
                 }
                 catch (Exception e)
                 {
-                    if (m_work)
-                    {
-                        //CallException(e);
-                        if (m_master.HandleException(e))
-                        { m_master.Close(); }
-                        //CallException(new Exception($"Client:{m_master.ID} was disconnected due to an unhandled exception"));
-                    }
+                    if (m_master.HandleException(e))
+                    { m_master.CloseConnection(DisconnectReason.UnhandledException, true); }
                 }
             }
         }

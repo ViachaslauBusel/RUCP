@@ -1,19 +1,10 @@
-﻿using RUCP.Collections;
-using RUCP.DATA;
+﻿using RUCP.DATA;
 using RUCP.Transmitter;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
 
 namespace RUCP
 {
-	//public enum DataSize
-	//{
-	//	Normal,
-	//	Large
-	//}
-	public sealed partial class Packet : PacketData, IDelayed, IComparable, IComparable<Packet>
+    public sealed partial class Packet : PacketData
     {
 
 
@@ -21,29 +12,23 @@ namespace RUCP
 		private volatile bool m_ack = false;
 		/// <summary>Время отправки пакета</summary>
 		private long m_sendTime;
-		/// <summary>Время повторной отправки пакета при неудачной попытке доставки</summary>
 		private long m_resendTime;
 
 
-
-
         /// <summary>Время повторной отправки пакета при неудачной попытке доставки</summary>
-        public long ResendTime => m_resendTime;
-		public bool isBlock => m_sendCicle != 0;
+        internal long ResendTime => m_resendTime;
+		internal long SendTime => m_sendTime;
 		internal bool ACK { get => m_ack; set => m_ack = value; }
 
-		public Client Client { get; private set; }
 
-
-		internal void InitClient(Client client) { Client = client; }
 		/// <summary>
-		/// Записывает время отправки/переотправки
+		/// Records the time the packet was sent. And the time to resend the packet when the delivery attempt fails
 		/// </summary>
-		internal void WriteSendTime()
+		internal void WriteSendTime(int timeout)
 		{
 			if (m_sendCicle++ == 0) { m_sendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); }
 
-			m_resendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Client.Statistic.GetTimeoutInterval() * m_sendCicle;
+			m_resendTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + timeout * m_sendCicle;
 		}
 
 
@@ -55,7 +40,10 @@ namespace RUCP
 		{
 			return (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - m_sendTime);
 		}
-
+		internal long GetDelay()
+		{
+			return ResendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+		}
 
 		public bool Encrypt
 		{
@@ -74,10 +62,10 @@ namespace RUCP
 		}
 
 		/// <summary>
-		/// Порядковый номер отпровляемого пакета.
+		/// The sequence number of the packet being sent
 		/// </summary>
 		/// <param name="sequence"></param>
-		unsafe internal ushort Sequence
+		internal unsafe ushort Sequence
         {
             set
             {
@@ -86,29 +74,21 @@ namespace RUCP
 			}
             get => BitConverter.ToUInt16(m_data, 3);
         }
-
-      
-
-
-
-
-        /// <summary>
-        /// Записывает тип пакета в заголовок
-        /// </summary>
-        unsafe public void WriteType(short type)
-		{
-			fixed (byte* d = m_data)
-			{ Buffer.MemoryCopy(&type, d + 1, 2, 2); }
-		}
-		public int ReadType()
-		{
-			return BitConverter.ToInt16(m_data, 1);
+		/// <summary>
+		/// Writes the opcode to the header
+		/// </summary>
+		public unsafe short OpCode
+        {
+			get => BitConverter.ToInt16(m_data, 1);
+            set
+            {
+				fixed (byte* d = m_data)
+				{ Buffer.MemoryCopy(&value, d + 1, 2, 2); }
+			}
 		}
 
-		public long GetDelay()
-		{
-			return ResendTime - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-		}
+
+	
 
 		public int CompareTo(object obj) => CompareTo((Packet)obj);
 		public int CompareTo(Packet packet)
@@ -120,165 +100,22 @@ namespace RUCP
 
 
 
-		private Packet(Channel channel)
-		{
-
-			m_data = new byte[DATA_SIZE];
-			Reset();
 	
-			this.TechnicalChannel = (int)channel;
-
-		}
-		private Packet()
-		{
-			m_data = new byte[DATA_SIZE];
-			Reset();
-		}
-		private Packet Copy(Packet copy_packet)
-		{
-			m_data = new byte[copy_packet.Data.Length];
-;
-			Array.Copy(copy_packet.Data, 0, this.Data, 0, copy_packet.Data.Length);
-
-			m_index = copy_packet.m_index;
-			m_realLength = copy_packet.m_realLength;
-			return this;
-		}
-
-
-		/// <summary>
-		/// Creates a packet with the channel through which it will be delivered
-		/// </summary>
-		public static Packet Create(Channel channel)
-		{
-            if (TryTakeFromPool(out Packet packet))
-            {
-                packet.TechnicalChannel = (int)channel;
-                return packet;
-            }
-            return new Packet(channel);
-		}
-		/// <summary>
-		/// Creates a copy of the packet
-		/// </summary>
-		/// <param name="client"></param>
-		/// <param name="copy_packet"></param>
-		/// <returns></returns>
-		public static Packet Create(Packet copy_packet)
-		{
-            if (TryTakeFromPool(out Packet packet))
-            {
-                packet.Copy(copy_packet);
-                return packet;
-            }
-            return new Packet().Copy(copy_packet);
-		}
-		internal static Packet Create()
-		{
-            if (TryTakeFromPool(out Packet packet))
-            {
-                return packet;
-            }
-            return new Packet();
-		}
 
 
 		public void Reset()
 		{
-			m_dataAccess = Access.Write;
-			Client = null;
+			m_dataAcces = DataAccess.Write;
 			m_ack = false;
 			m_sendCicle = 0;
-			WriteType(0);
+			OpCode = 0;
 			TechnicalChannel = 0;
 			Sequence = 0;
 			m_realLength = m_index = HEADER_SIZE;
 		}
 
-		internal void SendImmediately()
-		{
-			if (Client == null || !Client.isConnected())
-			{
-				throw new Exception("The packet cannot be sent, the client is not specified");
-			}
-			if (m_sendCicle != 0 || m_dataAccess == Access.Lock)
-			{
-				throw new Exception($"Packet is blocked, sending is not possible, m_sendCicle:{m_sendCicle}, m_dataAccess:{m_dataAccess}");
-			}
+	
 
-
-
-			bool dispose = false;
-
-			if (Encrypt) Client.CryptographerAES.Encrypt(this);
-
-			//Вставка в буфер отправленных пакетов для дальнейшего подтверждения об успешной доставки пакета
-			if (Client.InsertBuffer(this))
-			{
-				//Record for re-sending
-				Client.Server.Resender.Add(this);
-				m_dataAccess = Access.Lock;
-			}
-			else { dispose = true; }
-
-			Client.Server.Socket.SendTo(this, Client.RemoteAddress);
-
-
-			if (dispose) Dispose();
-
-		}
-
-		internal NetStream Send()
-		{
-			if (Client == null || !Client.isConnected())
-			{
-                throw new Exception("The packet cannot be sent, the client is not specified");
-			}
-
-			if (m_sendCicle != 0 || m_dataAccess == Access.Lock)
-			{
-				throw new Exception($"Packet is blocked, sending is not possible");
-			}
-
-			bool dispose = false;
-
-			if (Encrypt) Client.CryptographerAES.Encrypt(this);
-
-			//Вставка в буфер отправленных пакетов для дальнейшего подтверждения об успешной доставке пакета
-			if (Client.InsertBuffer(this))
-			{
-				WriteSendTime();
-				//Record for re-sending
-				//Client.Server.Resender.Add(this);
-				Client.Statistic.SentPackets++;
-				m_dataAccess = Access.Lock;
-			}
-			else { dispose = true; }
-
-
-			 Client.Stream.Write(this);
-			
-
-			NetStream stream = Client.Stream; 
-			if (dispose) Dispose();
-			return stream;
-		}
-
-		internal void Resend()
-        {
-			if (GetDelay() <= 0)
-            {
-				if (Client == null || !Client.isConnected())
-				{
-					return;
-				}
-           
-                //Console.WriteLine("resend");
-                WriteSendTime();
-				Client.Stream.Write(this);
-				Client.Statistic.ResentPackets++;
-			}
-        }
 		
 	}
 }

@@ -12,7 +12,6 @@ namespace RUCP.Transmitter
 
         void Connect(IPEndPoint iPEndPoint);
         void SendTo(Packet packet, IPEndPoint remoteAdress);
-        void Send(Packet packet);
         void SendTo(byte[] data, int size, IPEndPoint remoteAdress);
         int ReceiveFrom(byte[] buffer, ref EndPoint endPoint);
         /// <summary>
