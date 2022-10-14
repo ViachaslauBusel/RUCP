@@ -1,12 +1,8 @@
 ﻿using NUnit.Framework;
 using RUCP;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace nTests
 {
@@ -52,7 +48,7 @@ namespace nTests
         [Test]
         public void UnknownClient()
         {
-            byte[] data = new byte[10];
+            byte[] data = new byte[1];
             UdpClient socket = new UdpClient();
            
 

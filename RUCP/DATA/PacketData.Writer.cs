@@ -1,11 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace RUCP.DATA
 {
     public partial class PacketData
     {
+        public unsafe void Write<T>(T value) where T : struct
+        {
+            fixed (byte* d = m_data)
+            {
+                IntPtr ptr = new IntPtr(d + m_index);
+                m_index += Marshal.SizeOf<T>();
+                Marshal.StructureToPtr(value, ptr, false);
+            }
+        }
         unsafe private void WriteValue(void* value, int len)
         {
             if (m_dataAcces != DataAccess.Write) throw new Exception("Packet not writable");
@@ -14,8 +24,8 @@ namespace RUCP.DATA
             m_realLength = m_index += len;
         }
         /// <summary>
-        /// Записывает byte[]  в заранее определнный массив данных на отправку.
-        /// Если размер данных для записи превышает размер массива возврощает exception
+        /// Writes a byte[] to a predefined data array to send.
+        /// If the size of the data to write exceeds the size of the array, returns an exception
         /// </summary>
         unsafe public void WriteBytes(byte[] bytes)
         {

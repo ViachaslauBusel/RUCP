@@ -27,18 +27,18 @@ namespace RUCP
 
         public override void CloseConnection(DisconnectReason reason)
         {
-            Console.WriteLine($"Client -> Connection closed with result -> {reason}");
+           // Console.WriteLine($"Client -> Connection closed with result -> {reason}");
         }
 
         public override bool HandleException(Exception exception)
         {
-            Console.WriteLine($"Client: Exception caught:{exception}");
-            return true;
+           // Console.WriteLine($"Client: Exception caught:{exception}");
+            return false;
         }
 
         public override void OpenConnection()
         {
-            Console.WriteLine($"Client -> Connection open");
+           // Console.WriteLine($"Client -> Connection open");
         }
 
         /// <summary>

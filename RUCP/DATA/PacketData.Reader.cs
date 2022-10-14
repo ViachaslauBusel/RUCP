@@ -1,11 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace RUCP.DATA
 {
     public partial class PacketData
     {
+        public unsafe T Read<T>() where T : struct
+        {
+            if (m_dataAcces != DataAccess.Read) throw new Exception("Packet not readable");
+            fixed (byte* d = m_data)
+            {
+                IntPtr ptr = new IntPtr(d + m_index);
+                m_index += Marshal.SizeOf<T>();
+                return Marshal.PtrToStructure<T>(ptr);
+            }
+        }
         public long ReadLong()
         {
             if (m_dataAcces != DataAccess.Read) throw new Exception("Packet not readable");

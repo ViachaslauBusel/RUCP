@@ -51,12 +51,12 @@ namespace RUCP
             }
 			return false;
         }
-		/// <summary>
-		/// Удаляет клиента из списка клиентов
-		/// </summary>
-		/// <param name="client"></param>
-		/// <returns></returns>
-		bool IServer.RemoveClient(Client client)
+        /// <summary>
+        /// Removes a client from the list of clients
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
+        bool IServer.RemoveClient(Client client)
         {
 			return m_clients.RemoveClient(client);
         }
@@ -95,9 +95,9 @@ namespace RUCP
 				string version = fvi.FileVersion;
 				System.Console.WriteLine($"RUCP ver.{version}");
 				m_options = options.Clone();
-				//	buffer = new BlockingCollection<Packet>(new ConcurrentQueue<Packet>());
-				//Создание сокета по порту для считывание данных
-				m_socket =  UDPSocket.CreateSocket(receiveBufferSize: 3_145_728, sendBufferSize: 3_145_728, localPort: m_port);//m_networkEmulator ? NetworkEmulator.CreateNetworkEmulatorSocket(m_port) :
+                //	buffer = new BlockingCollection<Packet>(new ConcurrentQueue<Packet>());
+                //Creating a socket by port for reading data
+                m_socket =  UDPSocket.CreateSocket(receiveBufferSize: 3_145_728, sendBufferSize: 3_145_728, localPort: m_port);//m_networkEmulator ? NetworkEmulator.CreateNetworkEmulatorSocket(m_port) :
 
 				RSA.SetPrivateKey(ContainerRSAKey.LoadPrivateKey());
 
@@ -105,16 +105,16 @@ namespace RUCP
 
 
 				m_clients = new ClientList(this);
-				//Запуск потока переотправки потеряных пакетов
-				m_resender = Resender.Start(this);
-				//Запуск потока проверки соединений
-				m_cheking = CheckingConnections.Start(this);
+                //Starting the Lost Packet Resend Thread
+                m_resender = Resender.Start(this);
+                //Starting a connection check thread
+                m_cheking = CheckingConnections.Start(this);
 				m_taskPool = new TaskPool(m_options.MaxParallelism);
 
 				if (m_options.Mode == ServerMode.Automatic)
 				{
-					//Запуск потока считывание датаграмм
-				    m_server_th = new Thread(() => Run());
+                    //Starting a thread reading datagrams
+                    m_server_th = new Thread(() => Run());
 					m_server_th.IsBackground = true;
 					m_server_th.Start();
 				}
@@ -133,27 +133,34 @@ namespace RUCP
 			if (m_options.Mode != ServerMode.Manual || m_socket == null) return;
 			int availableBytes = m_socket.AvailableBytes;
 			EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
-			while (availableBytes > 0)
+			Client client = null;
+
+            while (availableBytes > 0)
 			{
 				try
-				{   //Создание нового пакета для хранение данных
-					Packet packet = Packet.Create();
+                {   
+				    //Create a new packet for data storage
+                    Packet packet = Packet.Create();
 
-					//Считывание датаграм
-					int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref senderRemote);
+                    //Reading datagrams
+                    int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref senderRemote);
 					availableBytes -= receiveBytes;
 					packet.InitData(receiveBytes);
-					Client client = m_clients.GetClient((IPEndPoint)senderRemote);
+				    client = m_clients.GetClient((IPEndPoint)senderRemote);
 					//packet.InitClient();
 				
 
-
-
-						PacketHandler.Process(this, client, packet);
-					
-
+				    PacketHandler.Process(this, client, packet);
 				}
-				catch (SocketException e)
+                catch (BufferOverflowException)
+                {
+					if (client != null)
+					{
+						CallException(new Exception($"The client:{client.ID} was disconnected due to a buffer overflow"));
+						client.CloseConnection(DisconnectReason.BufferOverflow);
+					}
+                }
+                catch (SocketException e)
 				{
 					if (e.ErrorCode == 10004)
 						break;//Exit
@@ -168,8 +175,8 @@ namespace RUCP
 			}
 		}
 
-		//Считывание датаграм из сокета
-		private void Run()
+        //Reading datagrams from a socket
+        private void Run()
 		{
 			EndPoint remoteSender = new IPEndPoint(IPAddress.Any, 0);
 			while (m_packetHandlerWork)
@@ -178,11 +185,11 @@ namespace RUCP
 				{
 					remoteSender = new IPEndPoint(IPAddress.Any, 0);
 
-					//Создание нового пакета для хранение данных
-					Packet packet = Packet.Create();
+                    //Create a new packet for data storage
+                    Packet packet = Packet.Create();
 
-					//Считывание датаграм
-					int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref remoteSender);
+                    //Reading datagrams
+                    int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref remoteSender);
 					Client client = m_clients.GetClient((IPEndPoint)remoteSender);
 					packet.InitData(receiveBytes);
 				//	packet.InitClient(client);
@@ -193,7 +200,6 @@ namespace RUCP
 					{
 						try
 						{
-						
 							PacketHandler.Process(this, client, packet);
 						}
 						catch (BufferOverflowException)

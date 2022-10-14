@@ -268,7 +268,7 @@ namespace RUCP
         /// <summary>
         /// Close connection to remote host
         /// </summary>
-        public async Task Close()
+        public async Task AsyncClose()
         {
             StartClosingCycle();
 
@@ -276,6 +276,13 @@ namespace RUCP
             {
                 await Task.Delay(1);
             }
+        }
+        /// <summary>
+        /// Close connection to remote host
+        /// </summary>
+        public void Close()
+        {
+            StartClosingCycle();
         }
 
         internal bool StartListening()
@@ -325,7 +332,7 @@ namespace RUCP
             }
         }
         /// <summary>
-        /// Закрывает сокет для отправки\приема. Останавливает все службы для игрока
+        /// Closes the socket for sending/receiving. Stops all services for a client
         /// </summary>
         internal void CloseConnection(DisconnectReason reason, bool sendNotifications = false)
         {
@@ -347,11 +354,8 @@ namespace RUCP
                     {
                         m_profile?.CloseConnection(reason);
                     }
-
-                  
                 }
             }
-               
         }
         
         

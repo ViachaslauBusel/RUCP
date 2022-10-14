@@ -8,6 +8,7 @@ namespace RUCP.Handler
     public class HandlersStorage<T> where T : Delegate
     {
         private Dictionary<int, T> m_handlers = new Dictionary<int, T>();
+
         //Метод для обработки неизвестных пакетов
         private T m_unknown;
 
@@ -18,6 +19,7 @@ namespace RUCP.Handler
         {
             m_unknown = unknownType;
         }
+
 
         public void RegisterHandler(int type, T method)
         {
@@ -38,6 +40,8 @@ namespace RUCP.Handler
             return m_handlers[type];
 
         }
+
+   
 
         public void RegisterAllStaticHandlers()
         {

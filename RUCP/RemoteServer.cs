@@ -106,7 +106,7 @@ namespace RUCP
         }
 
         /// <summary>
-        /// Отпровляем запрос серверу на подключение
+        /// Sending a connection request to the server
         /// </summary>
         private void Connector(Client client)
         {
@@ -116,12 +116,12 @@ namespace RUCP
             client.CryptographerRSA.WritePublicKey(packet);
             client.CryptographerRSA.Encrypt(packet);
 
-                int max_cicle = 20;//10 сек ожидание подключения
+                int max_cicle = 10;//5 сек ожидание подключения
                 m_firstPing = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             while (client.Status == NetworkStatus.LISTENING) //Ожидаем подключение
             {
                 if (--max_cicle < 0) { break; }
-                //Отпровляем пакет
+                //Send packet
                 client.WriteInSocket(packet);
 
                 Thread.Sleep(500); //Ожидание пакета "подтверждение подключение" от сервера

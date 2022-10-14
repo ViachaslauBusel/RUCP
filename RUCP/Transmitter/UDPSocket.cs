@@ -8,14 +8,15 @@ namespace RUCP.Transmitter
     internal sealed class UDPSocket : ISocket
     {
         private Socket m_socket = null;
-     //   private bool connection = false;
-        private Object m_locker = new Object();
+        //private bool connection = false;
+        //private Object m_locker = new Object();
+        //private static UdpClient udpClient;
 
         public int AvailableBytes => m_socket.Available;
 
 
 
-        //  private static UdpClient udpClient;
+      
 
         private UDPSocket(int receiveBufferSize, int sendBufferSize, int localPort) 
         {

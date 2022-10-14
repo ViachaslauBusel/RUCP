@@ -40,12 +40,10 @@ namespace RUCP.Transmitter
                 {
                     foreach (Client c in m_master.ClientList)
                     {
-                      
                         if (c.Status == NetworkStatus.CLOSE_WAIT)
                         {
                             Packet disconnectCMD = c.GetDisconnectPacket();
                             //Отсылаем пакет с запросом на отключения каждые н сек в течении н секунд
-
                             //Время ожидания ответа от удаленого узла истекло
                             if ((DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - disconnectCMD.SendTime) > 3_000)
                             {
@@ -53,14 +51,14 @@ namespace RUCP.Transmitter
                             }
                             else if (disconnectCMD.ResendTime >= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
                             {
-                                Console.WriteLine("Send disconnect CMD");
+                              //  Console.WriteLine("Send disconnect CMD");
                                 c.WriteInSocket(disconnectCMD);
                                 disconnectCMD.WriteSendTime(c.Statistic.GetTimeoutInterval());
                             }
                         }
 
                         c.BufferTick();
-                        c.Stream?.Flush();//TODO disconnect
+                        c.Stream?.Flush();
 
                     }
                     Thread.Sleep(1);
