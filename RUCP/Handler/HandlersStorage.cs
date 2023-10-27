@@ -7,6 +7,7 @@ namespace RUCP.Handler
 {
     public class HandlersStorage<T> where T : Delegate
     {
+    private static Dictionary<int, T> m_dumpStorage = new Dictionary<int, T>();
         private Dictionary<int, T> m_handlers = new Dictionary<int, T>();
 
         //Метод для обработки неизвестных пакетов
@@ -45,19 +46,40 @@ namespace RUCP.Handler
 
         public void RegisterAllStaticHandlers()
         {
-            foreach (Type @class in Assembly.GetEntryAssembly().GetTypes())
+            lock (m_dumpStorage)
             {
-                foreach (MethodInfo method in @class.GetMethods())
+                if (m_dumpStorage.Count > 0)
                 {
-                    foreach (Attribute attribute in method.GetCustomAttributes(typeof(HandlerAttribute), true))
+                    foreach (var handlerAttribute in m_dumpStorage)
                     {
-                        if (!method.IsStatic) { System.Console.Error.WriteLine($"The '{method.Name}' method for handling messages must be static"); continue; }
+                        try { RegisterHandler(handlerAttribute.Key, handlerAttribute.Value); }
+                        catch (ArgumentException) { System.Console.Error.WriteLine($"The method '{handlerAttribute.Key}' has invalid parameters"); }
+                    }
+                }
+                else
+                {
+                    foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        foreach (Type @class in assembly.GetTypes())
+                        {
+                            foreach (MethodInfo method in @class.GetMethods())
+                            {
+                                foreach (Attribute attribute in method.GetCustomAttributes(typeof(HandlerAttribute), true))
+                                {
+                                    if (!method.IsStatic) { System.Console.Error.WriteLine($"The '{method.Name}' method for handling messages must be static"); continue; }
 
-                        HandlerAttribute handlerAttribute = attribute as HandlerAttribute;
+                                    HandlerAttribute handlerAttribute = attribute as HandlerAttribute;
 
 
-                        try { RegisterHandler(handlerAttribute.Number, (T)method.CreateDelegate(typeof(T))); }
-                        catch (ArgumentException) { System.Console.Error.WriteLine($"The method '{method.Name}' has invalid parameters"); }
+                                    try
+                                    {
+                                        m_dumpStorage.Add(handlerAttribute.Number, (T)method.CreateDelegate(typeof(T)));
+                                        RegisterHandler(handlerAttribute.Number, (T)method.CreateDelegate(typeof(T)));
+                                    }
+                                    catch (ArgumentException) { System.Console.Error.WriteLine($"The method '{method.Name}' has invalid parameters"); }
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -7,7 +7,7 @@ namespace RUCP.DATA
 {
     public partial class PacketData
     {
-        public unsafe void Write<T>(T value) where T : struct
+        public unsafe void WriteValue<T>(T value) where T : struct
         {
             fixed (byte* d = m_data)
             {

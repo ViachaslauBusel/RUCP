@@ -25,7 +25,7 @@ namespace nTests
                     Packet packet = Packet.Create(Channel.Reliable);
                     packet.OpCode = 1;
                     packet.WriteInt(pack.ReadInt());
-                    PushPacket(Owner, packet);
+                    PushPacket(Client, packet);
 
                 }
                 //   ThreadCount.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);
@@ -42,7 +42,7 @@ namespace nTests
             public override void CloseConnection(DisconnectReason reason)
             {
 
-                    Console.WriteLine($"Server -> m_totalReadPacket:{m_totalReadPacket}, {Owner.Statistic.ToString()}");
+                    Console.WriteLine($"Server -> m_totalReadPacket:{m_totalReadPacket}, {Client.Statistic.ToString()}");
                     Console.WriteLine($"Server -> Close reason:{reason}");
             }
 
@@ -54,7 +54,7 @@ namespace nTests
 
             public override void OpenConnection()
             {
-                Console.WriteLine($"Owner:{Owner != null}");
+                Console.WriteLine($"Owner:{Client != null}");
             }
         }
 
@@ -149,7 +149,7 @@ namespace nTests
         public void TestConnection()
         {
             Assert.True(ForeachClients((c) => c.Status == NetworkStatus.CONNECTED));
-            Assert.True(ForeachClients((c) => c.Profile.Owner != null));
+            Assert.True(ForeachClients((c) => c.Profile.Client != null));
             Assert.True(ForeachClients((c) => { c.Close(); return true; }));
             m_server.Stop();
         }

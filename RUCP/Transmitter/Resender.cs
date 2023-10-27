@@ -1,6 +1,8 @@
 ﻿using RUCP.Collections;
+using RUCP.ServerSide;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 
@@ -26,9 +28,13 @@ namespace RUCP.Transmitter
 
         internal static Resender Start(IServer server)
         {
+
             Resender resender = new Resender(server);
-            resender.m_thread = new Thread(() => resender.Run()) { IsBackground = true };
-            resender.m_thread.Start();
+            if(server.Options.Mode == ServerMode.Automatic)
+            {
+                resender.m_thread = new Thread(() => resender.Run()) { IsBackground = true };
+                resender.m_thread.Start();
+            }
             return resender;
         }
 
@@ -38,29 +44,7 @@ namespace RUCP.Transmitter
             {
                 try
                 {
-                    foreach (Client c in m_master.ClientList)
-                    {
-                        if (c.Status == NetworkStatus.CLOSE_WAIT)
-                        {
-                            Packet disconnectCMD = c.GetDisconnectPacket();
-                            //Отсылаем пакет с запросом на отключения каждые н сек в течении н секунд
-                            //Время ожидания ответа от удаленого узла истекло
-                            if ((DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - disconnectCMD.SendTime) > 3_000)
-                            {
-                                c.CloseConnection(DisconnectReason.TimeoutExpired);
-                            }
-                            else if (disconnectCMD.ResendTime >= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
-                            {
-                              //  Console.WriteLine("Send disconnect CMD");
-                                c.WriteInSocket(disconnectCMD);
-                                disconnectCMD.WriteSendTime(c.Statistic.GetTimeoutInterval());
-                            }
-                        }
-
-                        c.BufferTick();
-                        c.Stream?.Flush();
-
-                    }
+                    Process();
                     Thread.Sleep(1);
                   //  Packet packet = m_elements.Take();
 
@@ -98,11 +82,42 @@ namespace RUCP.Transmitter
             }
         }
 
+        private void Process()
+        {
+            using (ClientEnumerator enumerator = m_master.ClientList.CreateEnumerator())
+            {
+                while (enumerator.MoveNext())
+                {
+                    Client c = enumerator.Current;
+
+                    if (c.Status == NetworkStatus.CLOSE_WAIT)
+                    {
+                        Packet disconnectCMD = c.GetDisconnectPacket();
+                        //Отсылаем пакет с запросом на отключения каждые н сек в течении н секунд
+                        //Время ожидания ответа от удаленого узла истекло
+                        if ((DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - disconnectCMD.SendTime) > 3_000)
+                        {
+                            c.CloseConnection(DisconnectReason.TimeoutExpired);
+                        }
+                        else if (disconnectCMD.ResendTime >= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                        {
+                            //  Console.WriteLine("Send disconnect CMD");
+                            c.WriteInSocket(disconnectCMD);
+                            disconnectCMD.WriteSendTime(c.Statistic.GetTimeoutInterval());
+                        }
+                    }
+
+                    c.BufferTick();
+                    c.Stream?.Flush();
+                }
+            }
+        }
+
         internal void Stop()
         {
             m_work = false;
           //  m_elements.Dispose();
-            m_thread.Join();
+            m_thread?.Join();
           //  Console.WriteLine("resender stop");
         }
     }

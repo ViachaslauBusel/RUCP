@@ -128,6 +128,17 @@ namespace RUCP
 			}
 		}
 
+		public int ClientsCount => m_clients.Count;
+		public void SendAll(Packet packet)
+		{
+            using (ClientEnumerator enumerator = m_clients.CreateEnumerator())
+            {
+				while (enumerator.MoveNext()) 
+				{
+					enumerator.Current.Send(packet);
+				}
+            }
+		}
 		public void ProcessPacket()
         {
 			if (m_options.Mode != ServerMode.Manual || m_socket == null) return;
@@ -173,6 +184,11 @@ namespace RUCP
 					CallException(e);
 				}
 			}
+		}
+		
+		public void DistributePackets()
+		{
+
 		}
 
         //Reading datagrams from a socket
@@ -249,10 +265,14 @@ namespace RUCP
 			try
 			{
 				m_acceptConnection = false;
-				foreach (Client client in m_clients)
+
+				using(ClientEnumerator enumerator = m_clients.CreateEnumerator())
 				{
-					//Отправка клиенту команды на отключение и очистка списка клиентов
-					client.CloseConnection(DisconnectReason.NormalClosed, true);
+					while (enumerator.MoveNext()) 
+					{
+                        //Отправка клиенту команды на отключение и очистка списка клиентов
+                        enumerator.Current.CloseConnection(DisconnectReason.NormalClosed, true);
+                    }
 				}
 				
 				m_resender?.Stop();

@@ -4,10 +4,10 @@ namespace RUCP
 {
     public abstract class BaseProfile
     {
-        public Client Owner { get; private set; }   
+        public Client Client { get; private set; }   
         internal void TechnicalInit(Client client)
         {
-            Owner = client;
+            Client = client;
         }
         public abstract void OpenConnection();
         public abstract void ChannelRead(Packet packet);

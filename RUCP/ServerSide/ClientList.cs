@@ -5,58 +5,59 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Threading;
 
 namespace RUCP.ServerSide
 {
-    internal struct ClientEnumerator : IEnumerator<Client>
-    {
+	internal struct ClientEnumerator : IEnumerator<Client>
+	{
 		private ClientSlot m_currentSlot;
+		private ReaderWriterLockSlim m_locker;
 		public Client Current { get; private set; }
 
-        object IEnumerator.Current => Current;
+		object IEnumerator.Current => Current;
 
-		internal ClientEnumerator(ClientSlot slot)
-        {
+		internal ClientEnumerator(ClientSlot slot, ReaderWriterLockSlim locker)
+		{
 			m_currentSlot = slot;
+			m_locker = locker;
 			Current = null;
-        }
+			m_locker.EnterReadLock();
+		}
 
-        public void Dispose()
-        {
-           
-        }
+		public void Dispose()
+		{
+			m_locker?.ExitReadLock();
+		}
 
-        public bool MoveNext()
-        {
+		public bool MoveNext()
+		{
+			Current = m_currentSlot?.Client;
+			m_currentSlot = m_currentSlot?.PrevSlot;
 
-				Current = m_currentSlot?.Client;
-				m_currentSlot = m_currentSlot?.PrevSlot;
-			
-			
 			return Current != null;
-        }
+		}
 
-        public void Reset()
-        {
-        
-        }
-    }
+		public void Reset()
+		{
+
+		}
+	}
 	internal sealed class ClientSlot
 	{
 		public Client Client { get; set; }
 		public ClientSlot NextSlot { get; set; }
 		public ClientSlot PrevSlot { get; set; }
 	}
-	internal sealed class ClientList : IEnumerable<Client>	
+	internal sealed class ClientList
     {
-	
 		private IServer m_master;
 		private ClientSlot m_head;
-		private object m_headLock = new object();
+		private ReaderWriterLockSlim m_locker = new ReaderWriterLockSlim();
 		/***
 	   * Список всех подключенных сокетов(Клиентов)
 	   */
-		private ConcurrentDictionary<long, ClientSlot> m_list_client = new ConcurrentDictionary<long, ClientSlot>();
+		private ConcurrentDictionary<long, ClientSlot> m_clients = new ConcurrentDictionary<long, ClientSlot>();
 
 		internal ClientList(IServer server)
         {
@@ -73,14 +74,16 @@ namespace RUCP.ServerSide
             {
 				Client = client
             };
-			if(m_list_client.TryAdd(client.ID, slot))
+			if(m_clients.TryAdd(client.ID, slot))
             {
-                lock (m_headLock)
+                try
                 {
-					if(m_head != null) m_head.NextSlot = slot;
+					m_locker.EnterWriteLock();
+					if (m_head != null) { m_head.NextSlot = slot; }
 					slot.PrevSlot = m_head;
 					m_head = slot;
                 }
+				finally { m_locker.ExitWriteLock(); }
 				return true;
             }
 			return false;
@@ -93,14 +96,14 @@ namespace RUCP.ServerSide
 		 */
 		public bool containsKey(long key)
 		{
-			return m_list_client.ContainsKey(key);
+			return m_clients.ContainsKey(key);
 		}
 
 
 		public Client GetClient(IPEndPoint endPoint)
         {
 			long id = SocketInformer.GetID(endPoint);
-			if (m_list_client.TryGetValue(id, out ClientSlot slot)) { return slot.Client; }
+			if (m_clients.TryGetValue(id, out ClientSlot slot)) { return slot.Client; }
 			return new Client(m_master, endPoint);
 		}
 		/// <summary>
@@ -108,10 +111,11 @@ namespace RUCP.ServerSide
 		/// </summary>
 		internal bool RemoveClient(Client client)
 		{
-			if (m_list_client.TryRemove(client.ID, out ClientSlot slot))
+			if (m_clients.TryRemove(client.ID, out ClientSlot slot))
 			{
-				lock (m_headLock)
+				try
 				{
+					m_locker.EnterWriteLock();
 					if (m_head == slot) { m_head = m_head.PrevSlot; }
 
 					if (slot.NextSlot != null) { slot.NextSlot.PrevSlot = slot.PrevSlot; }
@@ -119,18 +123,14 @@ namespace RUCP.ServerSide
 					slot.NextSlot = null;
 					slot.PrevSlot = null;
 				}
+				finally { m_locker.ExitWriteLock(); }
 				return true;
             }
 			return false;
 		}
 
-		public int Count => m_list_client.Count;
-		
+		public int Count => m_clients.Count;
 
-        public IEnumerator<Client> GetEnumerator() => new ClientEnumerator(m_head);
-
-
-        IEnumerator IEnumerable.GetEnumerator() => new ClientEnumerator(m_head);
-
-	}
+        internal ClientEnumerator CreateEnumerator() => new ClientEnumerator(m_head, m_locker);
+    }
 }
