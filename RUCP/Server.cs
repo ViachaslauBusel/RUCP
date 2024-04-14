@@ -157,7 +157,7 @@ namespace RUCP
                     int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref senderRemote);
 					availableBytes -= receiveBytes;
 					packet.InitData(receiveBytes);
-				    client = m_clients.GetClient((IPEndPoint)senderRemote);
+				    client = m_clients.GetOrCreateClient((IPEndPoint)senderRemote);
 					//packet.InitClient();
 				
 
@@ -206,7 +206,7 @@ namespace RUCP
 
                     //Reading datagrams
                     int receiveBytes = m_socket.ReceiveFrom(packet.Data, ref remoteSender);
-					Client client = m_clients.GetClient((IPEndPoint)remoteSender);
+					Client client = m_clients.GetOrCreateClient((IPEndPoint)remoteSender);
 					packet.InitData(receiveBytes);
 				//	packet.InitClient(client);
 

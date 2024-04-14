@@ -74,7 +74,7 @@ namespace RUCP
         /// <summary>
         /// Time to resend a packet on packet loss
         /// </summary>
-        internal int GetTimeoutInterval() => m_estimatedRTT + 5 * ((m_devRTT < 4) ? 4 : m_devRTT);
+        internal int GetTimeoutInterval() => Math.Max(1, m_estimatedRTT + 5 * ((m_devRTT < 4) ? 4 : m_devRTT));
 
         public int Ping
         {

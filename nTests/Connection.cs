@@ -60,6 +60,7 @@ namespace nTests
 
             Console.WriteLine($"Connection status:{client.Status}");
             Assert.True(client.Status == NetworkStatus.CLOSED);
+            Assert.True(server.ClientsCount == 0);
         }
     }
 }

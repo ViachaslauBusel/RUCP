@@ -8,11 +8,11 @@
     <Company>yazZ3va</Company>
     <Authors>yazZ3va</Authors>
     <Description>library for creating an authoritative server on the .NET platform</Description>
-    <AssemblyVersion>1.5.4</AssemblyVersion>
-    <FileVersion>1.5.4</FileVersion>
+    <AssemblyVersion>1.5.6</AssemblyVersion>
+    <FileVersion>1.5.6</FileVersion>
     <RepositoryUrl>https://github.com/yazZ3va/RUCP</RepositoryUrl>
     <Copyright>BSD-3-Clause License</Copyright>
-    <Version>1.5.4</Version>
+    <Version>1.5.6</Version>
   </PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unity|AnyCPU'">

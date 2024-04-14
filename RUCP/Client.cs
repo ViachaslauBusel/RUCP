@@ -13,18 +13,18 @@ namespace RUCP
     public sealed class Client : IDisposable
     {
         /// <summary>Acts as a bridge between remote client and server client</summary>
-        private IServer m_server;
-        private BaseProfile m_profile;
-        private IPEndPoint m_remoteAdress;
-        private NetStream m_stream;
-        private NetworkStatus m_status = NetworkStatus.CLOSED;
-        private NetworkStatistic m_statistic = new NetworkStatistic();
-        private QueueBuffer m_bufferQueue;
-        private ReliableBuffer m_bufferReliable;
-        private DiscardBuffer m_bufferDiscard;
-        private Object m_locker = new Object();
-        private TaskPipeline m_taskPipeline;
-        private Packet m_disconnectPacket;
+        private IServer _server;
+        private BaseProfile _profile;
+        private IPEndPoint _remoteAdress;
+        private NetStream _stream;
+        private NetworkStatus _status = NetworkStatus.CLOSED;
+        private NetworkStatistic _statistic = new NetworkStatistic();
+        private QueueBuffer _bufferQueue;
+        private ReliableBuffer _bufferReliable;
+        private DiscardBuffer _bufferDiscard;
+        private Object _locker = new Object();
+        private TaskPipeline _taskPipeline;
+        private Packet _disconnectPacket;
       
 
 
@@ -32,7 +32,7 @@ namespace RUCP
       
         internal RSA CryptographerRSA { get; private set; }
         internal AES CryptographerAES { get; private set; } 
-        internal IServer Server => m_server;
+        internal IServer Server => _server;
 
 
         public long ID { get; private set; }
@@ -43,23 +43,23 @@ namespace RUCP
 
 
         /// <summary>The address of the remote host to which this client is connected</summary>
-        public IPEndPoint RemoteAddress => m_remoteAdress;
-        public NetStream Stream => m_stream;    
-        public NetworkStatistic Statistic => m_statistic;
-        public NetworkStatus Status => m_status;
-        public BaseProfile Profile => m_profile;
+        public IPEndPoint RemoteAddress => _remoteAdress;
+        public NetStream Stream => _stream;    
+        public NetworkStatistic Statistic => _statistic;
+        public NetworkStatus Status => _status;
+        public BaseProfile Profile => _profile;
 
 
         public Packet GetDisconnectPacket()
         {
-            lock (m_locker)
+            lock (_locker)
             {
-                if (m_disconnectPacket == null)
+                if (_disconnectPacket == null)
                 {
-                    m_disconnectPacket = Packet.Create();
-                    m_disconnectPacket.TechnicalChannel = TechnicalChannel.Disconnect;
+                    _disconnectPacket = Packet.Create();
+                    _disconnectPacket.TechnicalChannel = TechnicalChannel.Disconnect;
                 }
-                return m_disconnectPacket;
+                return _disconnectPacket;
             }
         }
 
@@ -70,12 +70,12 @@ namespace RUCP
         //This client is created by the server and cannot be reused
         internal Client(IServer server, IPEndPoint adress)
         {
-            m_status = NetworkStatus.LISTENING;
+            _status = NetworkStatus.LISTENING;
             isRemoteHost = false;
-            m_server = server;
-            m_taskPipeline = server.TaskPool.CreatePipeline(this);
-            m_remoteAdress = adress;
-            m_stream = new NetStream(this);
+            _server = server;
+            _taskPipeline = server.TaskPool.CreatePipeline(this);
+            _remoteAdress = adress;
+            _stream = new NetStream(this);
 
             CryptographerRSA = new RSA();
             CryptographerAES = new AES();
@@ -83,9 +83,9 @@ namespace RUCP
             ID = SocketInformer.GetID(adress);
             SetHandler(() => server.CreateProfile());
 
-            m_bufferReliable = new ReliableBuffer(this, 512);
-            m_bufferQueue = new QueueBuffer(this, 512);
-            m_bufferDiscard = new DiscardBuffer(this, 512);
+            _bufferReliable = new ReliableBuffer(this, 512);
+            _bufferQueue = new QueueBuffer(this, 512);
+            _bufferDiscard = new DiscardBuffer(this, 512);
         }
         public Client()
         {
@@ -95,37 +95,37 @@ namespace RUCP
 
         public void ConnectTo(string address, int port, ServerOptions options = null)
         {
-            if(m_server != null) { throw new Exception("The client is already connected to the remote host"); }
-            if (m_profile == null) { throw new Exception("Client profile not set"); }
+            if(_server != null) { throw new Exception("The client is already connected to the remote host"); }
+            if (_profile == null) { throw new Exception("Client profile not set"); }
             if(options == null) options = new ServerOptions();
 
             CryptographerRSA = new RSA();
             CryptographerAES = new AES();
 
-            m_stream = new NetStream(this);
-            m_bufferReliable = new ReliableBuffer(this, 512);
-            m_bufferQueue = new QueueBuffer(this, 512);
-            m_bufferDiscard = new DiscardBuffer(this, 512);
+            _stream = new NetStream(this);
+            _bufferReliable = new ReliableBuffer(this, 512);
+            _bufferQueue = new QueueBuffer(this, 512);
+            _bufferDiscard = new DiscardBuffer(this, 512);
 
-            m_remoteAdress = new IPEndPoint(IPAddress.Parse(address), port);
-            m_server = new RemoteServer(this, m_remoteAdress, options);
+            _remoteAdress = new IPEndPoint(IPAddress.Parse(address), port);
+            _server = new RemoteServer(this, _remoteAdress, options);
          
-            ID = SocketInformer.GetID(m_remoteAdress);
+            ID = SocketInformer.GetID(_remoteAdress);
         }
 
         public void SetHandler(Func<BaseProfile> getHandler)
         {
-            m_profile = getHandler.Invoke();
-            m_profile.TechnicalInit(this);
+            _profile = getHandler.Invoke();
+            _profile.TechnicalInit(this);
         }
 
-        internal bool isConnected() => m_status == NetworkStatus.CONNECTED;
+        internal bool isConnected() => _status == NetworkStatus.CONNECTED;
 
         internal void BufferTick()
         {
-            m_bufferReliable?.Tick();
-            m_bufferQueue?.Tick();
-            m_bufferDiscard?.Tick();
+            _bufferReliable?.Tick();
+            _bufferQueue?.Tick();
+            _bufferDiscard?.Tick();
         }
 
 
@@ -135,19 +135,19 @@ namespace RUCP
         internal void HandlerPack(Packet packet)
         {
             if (packet.Encrypt) CryptographerAES.Decrypt(packet);
-            m_profile.ChannelRead(packet);
+            _profile.ChannelRead(packet);
          
         }
         internal void checkingConnection()
         {
-            m_profile.CheckingConnection();
+            _profile.CheckingConnection();
         }
 
        
 
         internal void InsertTask(Action act)
         {
-            m_taskPipeline.Insert(new Task(act));
+            _taskPipeline.Insert(new Task(act));
         }
 
         private void SendACK(ushort sequence, int channel)
@@ -159,9 +159,9 @@ namespace RUCP
             ack.Dispose();
         }
         //Подтверждение о принятии пакета клиентом
-        internal void ConfirmReliableACK(int sequence) { m_bufferReliable.ConfirmAsk(sequence); }
-        internal void ConfirmQueueACK(int sequence) { m_bufferQueue.ConfirmAsk(sequence); }
-        internal void ConfirmDiscardACK(int sequence) { m_bufferDiscard.ConfirmAsk(sequence); }
+        internal void ConfirmReliableACK(int sequence) { _bufferReliable.ConfirmAsk(sequence); }
+        internal void ConfirmQueueACK(int sequence) { _bufferQueue.ConfirmAsk(sequence); }
+        internal void ConfirmDiscardACK(int sequence) { _bufferDiscard.ConfirmAsk(sequence); }
 
         /// <summary>
         /// Вставка в буффер не подтвержденных пакетов
@@ -171,26 +171,26 @@ namespace RUCP
             switch (packet.Channel)
             {
                 case Channel.Reliable:
-                    m_bufferReliable?.Insert(packet);
+                    _bufferReliable?.Insert(packet);
                     return true;
                 case Channel.Queue:
-                    m_bufferQueue?.Insert(packet);
+                    _bufferQueue?.Insert(packet);
                     return true;
                 case Channel.Discard:
-                    m_bufferDiscard?.Insert(packet);
+                    _bufferDiscard?.Insert(packet);
                     return true;
 
                 default: return false;
             }
         }
 
-        internal bool HandleException(Exception e) => m_profile.HandleException(e);
+        internal bool HandleException(Exception e) => _profile.HandleException(e);
 
         //Обработка пакетов
         internal void ProcessReliable(Packet packet)
         {
             ushort sequence = packet.Sequence;
-            if (m_bufferReliable.Check(packet))
+            if (_bufferReliable.Check(packet))
             {
                 //Отправка ACK>>
                 SendACK(sequence, TechnicalChannel.ReliableACK);
@@ -201,7 +201,7 @@ namespace RUCP
         internal void ProcessQueue(Packet packet)
         {
             ushort sequence = packet.Sequence;
-            if (m_bufferQueue.Check(packet))
+            if (_bufferQueue.Check(packet))
             {
                 //Отправка ACK>>
                 SendACK(sequence, TechnicalChannel.QueueACK);
@@ -211,7 +211,7 @@ namespace RUCP
         internal void ProcessDiscard(Packet packet)
         {
             ushort sequence = packet.Sequence;
-            if (m_bufferDiscard.Check(packet))
+            if (_bufferDiscard.Check(packet))
             {
                 //Отправка ACK>>
                 SendACK(sequence, TechnicalChannel.DiscardACK);
@@ -233,29 +233,33 @@ namespace RUCP
         }
         public NetStream Send(Packet packet)
         {
-            if (packet.DataAccess != DataAccess.Write)
+            try
             {
-                throw new Exception($"Packet is blocked, sending is not possible");
+                if (packet.DataAccess != DataAccess.Write)
+                {
+                    _profile?.HandleException(new Exception($"Packet is blocked, sending is not possible"));
+                }
+                if (Status != NetworkStatus.CONNECTED)
+                {
+                    _profile?.HandleException(new Exception($"Attempt to write to a closed socket"));
+                }
+
+                Packet keepPacket = Packet.Create(packet);
+
+                if (keepPacket.Encrypt) CryptographerAES.Encrypt(keepPacket);
+
+                //Pasting into the buffer of sent packets for further confirmation of the successful delivery of the packet
+                if (InsertBuffer(keepPacket))
+                {
+                    Statistic.SentPackets++; ;
+                }
+
+                Stream?.Write(keepPacket);
             }
-            if(Status != NetworkStatus.CONNECTED)
+            catch
             {
-                throw new Exception($"Attempt to write to a closed socket");
+                Close();
             }
-
-            Packet keepPacket = Packet.Create(packet);
-
-            if (keepPacket.Encrypt) CryptographerAES.Encrypt(keepPacket);
-
-            //Pasting into the buffer of sent packets for further confirmation of the successful delivery of the packet
-            if (InsertBuffer(keepPacket))
-            {
-                Statistic.SentPackets++;;
-            }
-
-
-            Stream?.Write(keepPacket);
-
-
             return Stream;
         }
         internal void WriteInSocket(Packet packet)
@@ -272,9 +276,10 @@ namespace RUCP
         {
             StartClosingCycle();
 
-            while (m_status != NetworkStatus.CLOSED)
+            int maxAttempts = 1000;
+            while (_status != NetworkStatus.CLOSED && maxAttempts-- > 0)
             {
-                await Task.Delay(1);
+                await Task.Delay(5);
             }
         }
         /// <summary>
@@ -287,11 +292,11 @@ namespace RUCP
 
         internal bool StartListening()
         {
-            lock (m_locker)
+            lock (_locker)
             {
-                if ((NetworkStatus.CLOSED).HasFlag(m_status))
+                if ((NetworkStatus.CLOSED).HasFlag(_status))
                 {
-                    m_status = NetworkStatus.LISTENING;
+                    _status = NetworkStatus.LISTENING;
                     return true;
                 }
             }
@@ -299,19 +304,19 @@ namespace RUCP
         }
         internal bool TryOpenConnection()
         {
-            lock (m_locker)
+            lock (_locker)
             {
-                if ((NetworkStatus.LISTENING).HasFlag(m_status))
+                if ((NetworkStatus.LISTENING).HasFlag(_status))
                 {
-                    m_status = NetworkStatus.CONNECTED;
+                    _status = NetworkStatus.CONNECTED;
 
-                    if (m_server.AddClient(this))
+                    if (_server.AddClient(this))
                     {
-                        m_profile.OpenConnection();
+                        _profile.OpenConnection();
                     }
                     else
                     {
-                        m_status = NetworkStatus.CLOSED;
+                        _status = NetworkStatus.CLOSED;
                     }
                 }
             }
@@ -319,11 +324,11 @@ namespace RUCP
         }
         internal void StartClosingCycle()
         {
-            lock (m_locker)
+            lock (_locker)
             {
-                if ((NetworkStatus.LISTENING | NetworkStatus.CONNECTED).HasFlag(m_status))
+                if ((NetworkStatus.LISTENING | NetworkStatus.CONNECTED).HasFlag(_status))
                 {
-                    m_status = NetworkStatus.CLOSE_WAIT;
+                    _status = NetworkStatus.CLOSE_WAIT;
 
                     Packet packet = GetDisconnectPacket();
                     WriteInSocket(packet);
@@ -336,24 +341,37 @@ namespace RUCP
         /// </summary>
         internal void CloseConnection(DisconnectReason reason, bool sendNotifications = false)
         {
-            lock (m_locker)
+            lock (_locker)
             {
-                if ((NetworkStatus.LISTENING | NetworkStatus.CONNECTED | NetworkStatus.CLOSE_WAIT).HasFlag(m_status))
+                Console.WriteLine($"CloseConnection:{_status}");
+                try
                 {
+                    if ((NetworkStatus.LISTENING | NetworkStatus.CONNECTED | NetworkStatus.CLOSE_WAIT).HasFlag(_status))
+                    {
 
-                    m_status = NetworkStatus.CLOSED;
-                    try
-                    {
-                        if (sendNotifications)
+                        _status = NetworkStatus.CLOSED;
+                        try
                         {
-                            WriteInSocket(GetDisconnectPacket());
+                            if (sendNotifications)
+                            {
+                                WriteInSocket(GetDisconnectPacket());
+                            }
                         }
-                    } catch { }
-                    //Provides single call conditions
-                    if (m_server.RemoveClient(this))
-                    {
-                        m_profile?.CloseConnection(reason);
+                        catch { }
                     }
+                    //Provides single call conditions
+                    if (_server.RemoveClient(this))
+                    {
+                        Console.WriteLine($"CloseConnection:RemoveClient");
+                        _profile?.CloseConnection(reason);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"CloseConnection:RemoveClient failed");
+                    }
+                }catch (Exception e)
+                {
+                   Console.WriteLine($"CloseConnection:{e.Message}");
                 }
             }
         }
@@ -369,25 +387,25 @@ namespace RUCP
         #endregion
         public void Dispose()
         {
-            //lock (m_locker)
+            //lock (_locker)
             //{
             //    CloseIf(NetworkStatus.CONNECTED | NetworkStatus.LISTENING);
-            //    if (m_status == NetworkStatus.CLOSED)
+            //    if (_status == NetworkStatus.CLOSED)
             //    {
 
 
 
-            //        // m_remoteAdress = null;
-            //        m_stream?.Dispose();
-            //        // m_stream = null;
+            //        // _remoteAdress = null;
+            //        _stream?.Dispose();
+            //        // _stream = null;
 
-            //        m_bufferReliable?.Dispose();
-            //        m_bufferQueue?.Dispose();
-            //        m_bufferDiscard?.Dispose();
+            //        _bufferReliable?.Dispose();
+            //        _bufferQueue?.Dispose();
+            //        _bufferDiscard?.Dispose();
 
-            //        m_bufferReliable = null;
-            //        m_bufferQueue = null;
-            //        m_bufferDiscard = null;
+            //        _bufferReliable = null;
+            //        _bufferQueue = null;
+            //        _bufferDiscard = null;
 
             //        CryptographerAES?.Dispose();
             //        CryptographerRSA?.Dispose();
@@ -395,7 +413,7 @@ namespace RUCP
             //        CryptographerAES = null;
             //        CryptographerRSA = null;
 
-            //        m_server = null;
+            //        _server = null;
             //    }
             //}
         }
