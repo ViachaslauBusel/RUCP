@@ -81,8 +81,6 @@ namespace RUCP
 		{
 			try
 			{
-				
-
 				if (m_packetHandlerWork) throw new Exception("The server is already in running mode");
 				m_packetHandlerWork = true;
 				m_acceptConnection = true;
@@ -139,6 +137,18 @@ namespace RUCP
 				}
             }
 		}
+
+		public void FlushAll()
+		{
+            using (ClientEnumerator enumerator = m_clients.CreateEnumerator())
+			{
+                while (enumerator.MoveNext())
+				{
+                    enumerator.Current.Stream.ForceFlushToSocket();
+                }
+            }
+        }
+
 		public void ProcessPacket()
         {
 			if (m_options.Mode != ServerMode.Manual || m_socket == null) return;
@@ -254,9 +264,8 @@ namespace RUCP
 					if (m_packetHandlerWork) { CallException(e); }
 				}
 			}
-			m_socket.Close();
-
 		}
+
 		/// <summary>
 		/// Shuts down the server, disconnects all clients
 		/// </summary>
@@ -264,6 +273,7 @@ namespace RUCP
 		{
 			try
 			{
+				Console.WriteLine("Server start shutdown.");
 				m_acceptConnection = false;
 
 				using(ClientEnumerator enumerator = m_clients.CreateEnumerator())
@@ -283,10 +293,10 @@ namespace RUCP
 				m_taskPool?.Dispose();
 
 				m_packetHandlerWork = false;
-				m_socket?.Close();
-				m_socket?.Dispose();
+                m_socket?.Close();
+                m_socket?.Dispose();
 
-				m_server_th?.Join();
+                m_server_th?.Join();
 
 			} catch (Exception e)
             {

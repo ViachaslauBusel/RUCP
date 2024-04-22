@@ -7,9 +7,9 @@ namespace RUCP
     public class ClientOptions
     {
         /// <summary>
-        /// Waiting time before writing data to the socket for maximum filling of the MTU. There are 10,000 ticks in a millisecond.
+        /// Waiting time before writing data to the socket for maximum filling of the MTU.
         /// </summary>
-        public int SendTimeout { get; set; } = 200;
+        public int SendTimeout { get; set; } = 1;
         /// <summary>
         /// Time to wait for a response from the remote host before disconnecting it
         /// </summary>

@@ -8,54 +8,55 @@ namespace RUCP
 {
     internal sealed class TaskPipeline
     {
-        private Task m_previousTask;
-        private volatile int m_taskCount = 0;
-        private SemaphoreSlim m_concurrencySemaphore;
-        private Client m_client;
-        private object m_locker = new object();
+        private Task _previousTask;
+        private volatile int _taskCount = 0;
+        private SemaphoreSlim _concurrencySemaphore;
+        private Client _client;
+        private object _locker = new object();
 
         public TaskPipeline(SemaphoreSlim concurrencySemaphore, Client client)
         {
-            m_concurrencySemaphore = concurrencySemaphore;
-            m_client = client;
+            _concurrencySemaphore = concurrencySemaphore;
+            _client = client;
         }
 
         internal void Insert(Task task)
         {
-            lock (m_locker)
+            lock (_locker)
             {
-                if (m_taskCount++ == 0)
+                if (_taskCount++ == 0)
                 {
                    // Console.WriteLine("Lock thread");
-                    m_concurrencySemaphore.Wait();
+                    _concurrencySemaphore.Wait();
                 }
 
                 Task continueTask = task.ContinueWith(x => Release());
 
-                if (m_previousTask != null) { m_previousTask.ContinueWith(p => task.Start()); }
+                if (_previousTask != null) { _previousTask.ContinueWith(p => task.Start()); }
                 else { task.Start(); }
 
-                m_previousTask = continueTask;
+                _previousTask = continueTask;
             }
         }
 
         private void Release()
         {
-            lock (m_locker)
+            lock (_locker)
             {
-                if(--m_taskCount == 0)
+                if(--_taskCount == 0)
                 {
                     // Console.WriteLine("Unlock thread");
-                    m_client.Stream.Flush();
-                    m_concurrencySemaphore.Release();
+                    _client.Stream.ForceFlushToSocket();
+                    _concurrencySemaphore.Release();
                 }
             }
         }
     }
+
+
     internal sealed class TaskPool : IDisposable
     {
         private SemaphoreSlim m_concurrencySemaphore;
-
 
         public TaskPool(int maxParallelism)
         {
@@ -66,8 +67,6 @@ namespace RUCP
         {
             return new TaskPipeline(m_concurrencySemaphore, owner);
         }
-
-       
 
         public void Dispose()
         {

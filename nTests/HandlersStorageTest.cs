@@ -11,7 +11,7 @@ namespace nTests
     internal class HandlersStorageTest
     {
     [Handler(2)]
-    private static void TestMethod()
+    public static void TestMethod()
     {
 
     }

@@ -64,20 +64,22 @@ namespace RUCP.Transmitter
     //}
     public sealed class NetStream : IDisposable
     {
-        private Client m_owner;
-        private Packet m_outData;
+        private readonly Client m_owner;
+        private readonly int _sendTimeOut;
+        private readonly Packet m_buffer;
     //    private FlushRequest m_flushRequest;
-        private object m_locker = new object();
-        private DateTime m_flushTickTime = DateTime.UtcNow;
+        private readonly object m_locker = new object();
+        private long _firstBufferPacketTime;
 
 
-        public NetStream(Client client)
+        public NetStream(Client client, int sendTimeout)
         {
             m_owner = client;
+            _sendTimeOut = sendTimeout;
        //     m_flushRequest = new FlushRequest(m_locker, () => Flush());
 
-            m_outData = Packet.Create();
-            m_outData.TechnicalChannel = TechnicalChannel.Stream;
+            m_buffer = Packet.Create();
+            m_buffer.TechnicalChannel = TechnicalChannel.Stream;
           
         }
 
@@ -86,10 +88,11 @@ namespace RUCP.Transmitter
         {
             lock (m_locker)
             {
-                if (m_outData.AvailableBytesForWriting < packet.Length + 2) { Flush(); }//AvailableBytesForWriting < packet.Length + 2
+                if (m_buffer.WrittenBytes == 0) _firstBufferPacketTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                else if (m_buffer.AvailableBytesForWriting < packet.Length + 2) { ForceFlushToSocket(); }//AvailableBytesForWriting < packet.Length + 2
 
               //  m_test++;
-                m_outData.WriteBytes(packet.Data, packet.Length);
+                m_buffer.WriteBytes(packet.Data, packet.Length);
 
               //  m_flushTickTime
                // m_flushRequest.FlushIn(m_client.Server.Options.SendTimeout);
@@ -109,19 +112,38 @@ namespace RUCP.Transmitter
             }
         }
 
-        public void Flush()
+        public void TimedFlushToSocket()
         {
             lock (m_locker)
             {
-               // Console.WriteLine($"пакетов обьеденено:{m_test}");
-               // m_test = 0;
-             //   m_flushRequest.Abort();
-                if(m_outData.WrittenBytes == 0 ) return;//&& m_flushTickTime < DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-               // Console.WriteLine("Flush");
-                m_owner.WriteInSocket(m_outData);
-             //   Console.WriteLine($"Send to remote address");
-                m_outData.Reset();
-                m_outData.TechnicalChannel = TechnicalChannel.Stream;
+                // Calculate the time elapsed since the first packet was buffered
+                long timeSinceInsertFirstPacket = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _firstBufferPacketTime;
+
+                // If the buffer is empty or the timeout has not yet been reached, exit the method
+                if (m_buffer.WrittenBytes == 0 || timeSinceInsertFirstPacket < _sendTimeOut) return;
+
+                // Write the buffer to the socket
+                m_owner.WriteInSocket(m_buffer);
+
+                // Reset the buffer for the next set of data
+                m_buffer.Reset();
+                m_buffer.TechnicalChannel = TechnicalChannel.Stream;
+            }
+        }
+
+        public void ForceFlushToSocket()
+        {
+            lock (m_locker)
+            {
+                // If the buffer is empty, exit the method
+                if (m_buffer.WrittenBytes == 0) return;
+
+                // Write the buffer to the socket
+                m_owner.WriteInSocket(m_buffer);
+
+                // Reset the buffer for the next set of data
+                m_buffer.Reset();
+                m_buffer.TechnicalChannel = TechnicalChannel.Stream;
             }
         }
 

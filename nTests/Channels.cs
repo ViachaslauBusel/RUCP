@@ -179,7 +179,7 @@ namespace nTests
                 //    sleepJ += 10;
                 //}
 ;            }
-            foreach (var c in m_clients) { c.Stream.Flush(); }
+            foreach (var c in m_clients) { c.Stream.ForceFlushToSocket(); }
                 double sendTime = timer.Elapsed.TotalMilliseconds;
             Stopwatch stopwatch = Stopwatch.StartNew();
             while (true)

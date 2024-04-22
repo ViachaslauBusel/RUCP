@@ -75,7 +75,7 @@ namespace RUCP
             _server = server;
             _taskPipeline = server.TaskPool.CreatePipeline(this);
             _remoteAdress = adress;
-            _stream = new NetStream(this);
+            _stream = new NetStream(this, server.Options.SendTimeout);
 
             CryptographerRSA = new RSA();
             CryptographerAES = new AES();
@@ -95,14 +95,14 @@ namespace RUCP
 
         public void ConnectTo(string address, int port, ServerOptions options = null)
         {
-            if(_server != null) { throw new Exception("The client is already connected to the remote host"); }
+            if (_server != null) { throw new Exception("The client is already connected to the remote host"); }
             if (_profile == null) { throw new Exception("Client profile not set"); }
-            if(options == null) options = new ServerOptions();
+            if (options == null) options = new ServerOptions();
 
             CryptographerRSA = new RSA();
             CryptographerAES = new AES();
 
-            _stream = new NetStream(this);
+            _stream = new NetStream(this, options.SendTimeout);
             _bufferReliable = new ReliableBuffer(this, 512);
             _bufferQueue = new QueueBuffer(this, 512);
             _bufferDiscard = new DiscardBuffer(this, 512);
@@ -119,7 +119,7 @@ namespace RUCP
             _profile.TechnicalInit(this);
         }
 
-        internal bool isConnected() => _status == NetworkStatus.CONNECTED;
+        internal bool isConnected() => _status == NetworkStatus.CONNECTED || _status == NetworkStatus.CLOSE_WAIT;
 
         internal void BufferTick()
         {
@@ -198,6 +198,7 @@ namespace RUCP
             }
 
         }
+
         internal void ProcessQueue(Packet packet)
         {
             ushort sequence = packet.Sequence;
@@ -208,6 +209,7 @@ namespace RUCP
                 //Отправка ACK<<
             }
         }
+
         internal void ProcessDiscard(Packet packet)
         {
             ushort sequence = packet.Sequence;
@@ -218,50 +220,46 @@ namespace RUCP
                 //Отправка ACK<<
             }
         }
-
-
+        
         public void Send(Packet packet, short opCode, Channel channel)
         {
             packet.OpCode = opCode;
             packet.TechnicalChannel = (int)channel;
             Send(packet);
         }
+
         public void Send(Packet packet, Channel channel)
         {
             packet.TechnicalChannel = (int)channel;
             Send(packet);
         }
+
         public NetStream Send(Packet packet)
         {
-            try
+            if (packet.DataAccess != DataAccess.Write)
             {
-                if (packet.DataAccess != DataAccess.Write)
-                {
-                    _profile?.HandleException(new Exception($"Packet is blocked, sending is not possible"));
-                }
-                if (Status != NetworkStatus.CONNECTED)
-                {
-                    _profile?.HandleException(new Exception($"Attempt to write to a closed socket"));
-                }
-
-                Packet keepPacket = Packet.Create(packet);
-
-                if (keepPacket.Encrypt) CryptographerAES.Encrypt(keepPacket);
-
-                //Pasting into the buffer of sent packets for further confirmation of the successful delivery of the packet
-                if (InsertBuffer(keepPacket))
-                {
-                    Statistic.SentPackets++; ;
-                }
-
-                Stream?.Write(keepPacket);
+                _profile?.HandleException(new Exception($"Packet is blocked, sending is not possible"));
             }
-            catch
+            if (Status != NetworkStatus.CONNECTED)
             {
-                Close();
+                _profile?.HandleException(new Exception($"Attempt to write to a closed socket"));
             }
+
+            Packet keepPacket = Packet.Create(packet);
+
+            if (keepPacket.Encrypt) CryptographerAES.Encrypt(keepPacket);
+
+            //Pasting into the buffer of sent packets for further confirmation of the successful delivery of the packet
+            if (InsertBuffer(keepPacket))
+            {
+                Statistic.SentPackets++; ;
+            }
+
+            Stream?.Write(keepPacket);
+
             return Stream;
         }
+
         internal void WriteInSocket(Packet packet)
         {
             Server?.Socket?.SendTo(packet, RemoteAddress);
@@ -272,7 +270,7 @@ namespace RUCP
         /// <summary>
         /// Close connection to remote host
         /// </summary>
-        public async Task AsyncClose()
+        public async Task CloseAsync()
         {
             StartClosingCycle();
 
@@ -322,6 +320,7 @@ namespace RUCP
             }
             return true;
         }
+
         internal void StartClosingCycle()
         {
             lock (_locker)
@@ -336,6 +335,7 @@ namespace RUCP
                 }
             }
         }
+
         /// <summary>
         /// Closes the socket for sending/receiving. Stops all services for a client
         /// </summary>
@@ -343,7 +343,7 @@ namespace RUCP
         {
             lock (_locker)
             {
-                Console.WriteLine($"CloseConnection:{_status}");
+                //Console.WriteLine($"CloseConnection:{_status}:{reason}:{sendNotifications}");
                 try
                 {
                     if ((NetworkStatus.LISTENING | NetworkStatus.CONNECTED | NetworkStatus.CLOSE_WAIT).HasFlag(_status))
@@ -362,26 +362,19 @@ namespace RUCP
                     //Provides single call conditions
                     if (_server.RemoveClient(this))
                     {
-                        Console.WriteLine($"CloseConnection:RemoveClient");
+                        //Console.WriteLine($"CloseConnection:RemoveClient");
                         _profile?.CloseConnection(reason);
                     }
                     else
                     {
-                        Console.WriteLine($"CloseConnection:RemoveClient failed");
+                        //Console.WriteLine($"CloseConnection:RemoveClient failed");
                     }
                 }catch (Exception e)
                 {
-                   Console.WriteLine($"CloseConnection:{e.Message}");
+                   Console.WriteLine($"CloseConnection:{e.Message}:{reason}");
                 }
             }
         }
-        
-        
-
-
-      
-      
-
       
 
         #endregion

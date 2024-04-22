@@ -108,7 +108,7 @@ namespace RUCP.Transmitter
                     }
 
                     c.BufferTick();
-                    c.Stream?.Flush();
+                    c.Stream?.TimedFlushToSocket();
                 }
             }
         }

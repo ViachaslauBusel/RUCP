@@ -152,9 +152,7 @@ namespace RUCP
 
                     PacketHandler.Process(this, m_master, packet);
 
-                    m_master.Stream?.Flush();
-
-
+                    m_master.Stream?.ForceFlushToSocket();
                 }
                 catch (SocketException e)
                 {

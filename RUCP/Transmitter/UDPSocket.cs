@@ -20,7 +20,8 @@ namespace RUCP.Transmitter
 
         private UDPSocket(int receiveBufferSize, int sendBufferSize, int localPort) 
         {
-            m_socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            m_socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
+            m_socket.DualMode = true;
            // m_socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
             if (receiveBufferSize > 0) m_socket.ReceiveBufferSize = receiveBufferSize;
             if(sendBufferSize > 0) m_socket.SendBufferSize = sendBufferSize;

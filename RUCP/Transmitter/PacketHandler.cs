@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 
 namespace RUCP.Transmitter
 {
@@ -94,6 +95,7 @@ namespace RUCP.Transmitter
 					break;
 
 				case TechnicalChannel.Disconnect:
+					//Console.WriteLine($"[{(client.isRemoteHost ? "client" : "server")}]Disconnect");
 					//If the client is in a connection closing cicle
 					if (client.Status == NetworkStatus.CLOSE_WAIT) { client.CloseConnection(DisconnectReason.NormalClosed, false); }
 					else { client.CloseConnection(DisconnectReason.ClosedRemoteSide, true); }
