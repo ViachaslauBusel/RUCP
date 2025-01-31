@@ -46,6 +46,16 @@ namespace RUCP.DATA
             m_realLength = m_index += length;
         }
 
+        public unsafe void WriteDecimal(decimal value)
+        {
+            WriteValue(&value, 16);
+        }
+
+        unsafe public void WriteDouble(double value)
+        {
+            WriteValue(&value, 8);
+        }
+
         unsafe public void WriteFloat(float value)
         {
             WriteValue(&value, 4);
@@ -55,7 +65,18 @@ namespace RUCP.DATA
         {
             WriteValue(&value, 4);
         }
+
+        public unsafe void WriteUint(uint value)
+        {
+            WriteValue(&value, 4);
+        }
+
         unsafe public void WriteLong(long value)
+        {
+            WriteValue(&value, 8);
+        }
+
+        public unsafe void WriteUlong(ulong value)
         {
             WriteValue(&value, 8);
         }
@@ -76,6 +97,13 @@ namespace RUCP.DATA
             return ref m_data[m_index - 1];
         }
 
+        public void WriteSByte(sbyte value)
+        {
+            if (m_dataAcces != DataAccess.Write) throw new Exception("Packet not writable");
+            m_data[m_index++] = (byte)value;
+            m_realLength = m_index;
+        }
+
         public void WriteBool(bool value)
         {
             if (m_dataAcces != DataAccess.Write) throw new Exception("Packet not writable");
@@ -85,9 +113,14 @@ namespace RUCP.DATA
 
         public void WriteString(string value)
         {
-            byte[] bytes = Encoding.UTF8.GetBytes(value);
+            byte[] bytes = string.IsNullOrEmpty(value) ? new byte[0] 
+                                                       : Encoding.UTF8.GetBytes(value);
             WriteBytes(bytes);
         }
 
+        public unsafe void WriteChar(char value)
+        {
+            WriteValue(&value, 2);
+        }
     }
 }

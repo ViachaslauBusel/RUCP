@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -7,16 +6,17 @@ namespace RUCP.DATA
 {
     public partial class PacketData
     {
-        public unsafe T ReadValue<T>() where T : struct
+        public T ReadValue<T>() where T : struct
         {
             if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
-            fixed (byte* d = m_data)
-            {
-                IntPtr ptr = new IntPtr(d + m_index);
-                m_index += Marshal.SizeOf<T>();
-                return Marshal.PtrToStructure<T>(ptr);
-            }
+
+            int size = Marshal.SizeOf<T>();
+
+            T value = MemoryMarshal.Read<T>(new Span<byte>(m_data, m_index, size));
+            m_index += size;
+            return value;
         }
+
         public long ReadLong()
         {
             if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
@@ -24,10 +24,27 @@ namespace RUCP.DATA
             m_index += 8;
             return ret;
         }
+
+        public ulong ReadUlong()
+        {
+            if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
+            ulong ret = BitConverter.ToUInt64(m_data, m_index);
+            m_index += 8;
+            return ret;
+        }
+
         public int ReadInt()
         {
             if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
             int ret = BitConverter.ToInt32(m_data, m_index);
+            m_index += 4;
+            return ret;
+        }
+
+        public uint ReadUint()
+        {
+            if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
+            uint ret = BitConverter.ToUInt32(m_data, m_index);
             m_index += 4;
             return ret;
         }
@@ -74,6 +91,12 @@ namespace RUCP.DATA
             return m_data[m_index++];
         }
 
+        public sbyte ReadSbyte()
+        {
+            if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
+            return (sbyte)m_data[m_index++];
+        }
+
         public bool ReadBool()
         {
             if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
@@ -88,12 +111,32 @@ namespace RUCP.DATA
             return val;
         }
 
+        public double ReadDouble()
+        {
+            if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
+            double val = BitConverter.ToDouble(m_data, m_index);
+            m_index += 8;
+            return val;
+        }
+
+        public unsafe decimal ReadDecimal()
+        {
+            if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
+            return ReadValue<decimal>();
+        }
+
         public String ReadString()
         {
             if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
             return Encoding.UTF8.GetString(ReadBytes());
         }
 
-
+        public char ReadChar()
+        {
+            if (m_dataAcces != DataAccess.Read) throw new Exception("Packet unreadable");
+            char ret = BitConverter.ToChar(m_data, m_index);
+            m_index += 2;
+            return ret;
+        }
     }
 }

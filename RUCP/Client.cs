@@ -238,11 +238,11 @@ namespace RUCP
         {
             if (packet.DataAccess != DataAccess.Write)
             {
-                _profile?.HandleException(new Exception($"Packet is blocked, sending is not possible"));
+                _profile?.HandleException(new Exception($"Packet is blocked, sending is not possible:{packet.OpCode}"));
             }
             if (Status != NetworkStatus.CONNECTED)
             {
-                _profile?.HandleException(new Exception($"Attempt to write to a closed socket"));
+                _profile?.HandleException(new Exception($"Attempt to write to a closed socket:{packet.OpCode}"));
             }
 
             Packet keepPacket = Packet.Create(packet);
