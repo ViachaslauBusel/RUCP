@@ -14,5 +14,9 @@ namespace RUCP
         /// Time to wait for a response from the remote host before disconnecting it
         /// </summary>
         public int DisconnectTimeout { get; set; } = 6_000;
+        /// <summary>
+        /// Buffer size for sending data
+        /// </summary>
+        public int SendBufferSize { get; set; } = 512;
     }
 }

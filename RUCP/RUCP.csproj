@@ -5,14 +5,15 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <Configurations>Debug;Release;Unity</Configurations>
-    <Company>yazZ3va</Company>
-    <Authors>yazZ3va</Authors>
+    <Company>RealmCraftsman</Company>
+    <Authors>RealmCraftsman</Authors>
     <Description>library for creating an authoritative server on the .NET platform</Description>
-    <AssemblyVersion>1.5.9</AssemblyVersion>
-    <FileVersion>1.5.9</FileVersion>
-    <RepositoryUrl>https://github.com/yazZ3va/RUCP</RepositoryUrl>
+    <AssemblyVersion>1.5.11</AssemblyVersion>
+    <FileVersion>1.5.11</FileVersion>
+    <RepositoryUrl>https://github.com/ViachaslauBusel/RUCP</RepositoryUrl>
     <Copyright>BSD-3-Clause License</Copyright>
-    <Version>1.5.9</Version>
+    <Version>1.5.11</Version>
+    <AssemblyName>RUCPn</AssemblyName>
   </PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Unity|AnyCPU'">

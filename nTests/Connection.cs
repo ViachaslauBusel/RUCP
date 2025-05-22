@@ -27,7 +27,7 @@ namespace nTests
             }
 
             Console.WriteLine($"Connection status:{client.Status}");
-            Assert.True(client.Status != NetworkStatus.LISTENING);
+            Assert.True(client.Status == NetworkStatus.CLOSED);
         }
 
         [Test]

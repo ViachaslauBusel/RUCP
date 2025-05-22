@@ -87,13 +87,9 @@ namespace RUCP
       
         public bool RemoveClient(Client client)
         {
-            if (m_clients.RemoveClient(client))
-            {
-                m_work = false;
-                StopServices();
-                return true;
-            }
-            return false;
+            StopServices();
+
+            return m_clients.RemoveClient(client);
         }
 
         private void StopServices()

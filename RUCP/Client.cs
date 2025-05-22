@@ -103,9 +103,9 @@ namespace RUCP
             CryptographerAES = new AES();
 
             _stream = new NetStream(this, options.SendTimeout);
-            _bufferReliable = new ReliableBuffer(this, 512);
-            _bufferQueue = new QueueBuffer(this, 512);
-            _bufferDiscard = new DiscardBuffer(this, 512);
+            _bufferReliable = new ReliableBuffer(this, options.SendBufferSize);
+            _bufferQueue = new QueueBuffer(this, options.SendBufferSize);
+            _bufferDiscard = new DiscardBuffer(this, options.SendBufferSize);
 
             _remoteAdress = new IPEndPoint(IPAddress.Parse(address), port);
             _server = new RemoteServer(this, _remoteAdress, options);
@@ -142,8 +142,6 @@ namespace RUCP
         {
             _profile.CheckingConnection();
         }
-
-       
 
         internal void InsertTask(Action act)
         {
@@ -358,18 +356,15 @@ namespace RUCP
                             }
                         }
                         catch { }
+
+                        if (_server.RemoveClient(this))
+                        {
+                            //Console.WriteLine($"CloseConnection:RemoveClient");
+                            _profile?.CloseConnection(reason);
+                        }
                     }
-                    //Provides single call conditions
-                    if (_server.RemoveClient(this))
-                    {
-                        //Console.WriteLine($"CloseConnection:RemoveClient");
-                        _profile?.CloseConnection(reason);
-                    }
-                    else
-                    {
-                        //Console.WriteLine($"CloseConnection:RemoveClient failed");
-                    }
-                }catch (Exception e)
+                }
+                catch (Exception e)
                 {
                    Console.WriteLine($"CloseConnection:{e.Message}:{reason}");
                 }

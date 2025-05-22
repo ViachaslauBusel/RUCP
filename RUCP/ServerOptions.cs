@@ -23,7 +23,8 @@ namespace RUCP
             Mode = this.Mode,
             MaxParallelism = this.MaxParallelism,
             SendTimeout = this.SendTimeout,
-            DisconnectTimeout = this.DisconnectTimeout
+            DisconnectTimeout = this.DisconnectTimeout,
+            SendBufferSize = this.SendBufferSize
         };
     }
 }
